@@ -698,8 +698,10 @@ export default function Home() {
         })()}
       </div>
 
-      {/* Hidden photo input */}
-      <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
+      {/* Hidden photo input — iOS Safari needs opacity:0 not display:none for programmatic click */}
+      <input ref={photoInputRef} type="file" accept="image/*,image/heic,image/heif" 
+        style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, opacity: 0 }} 
+        onChange={handlePhotoUpload} />
 
       {/* Edit mode banner */}
       {editMode && (
