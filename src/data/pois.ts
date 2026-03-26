@@ -49,13 +49,16 @@ export const SAMPLE_POIS: POI[] = [
   // ║  FUEL DOCKS                                                         ║
   // ╚══════════════════════════════════════════════════════════════════════╝
   { id: 'f-01', name: 'Holiday Fuel Dock', type: 'fuel', lat: 34.1679, lng: -84.0030, description: 'Large fuel dock at Holiday Marina. Gas, diesel, pump-out. Ship store with ice, snacks, apparel, water toys.', details: { 'Fuel': 'Gas + diesel', 'Pump-out': 'Yes' } },
-  { id: 'f-02', name: 'Bald Ridge Fuel Dock', type: 'fuel', lat: 34.1925, lng: -84.1135, description: 'Best fuel dock on the lake. 90 oct non-ethanol marine grade, diesel, multiple pump-out stations. Well shielded from rough water. Wind flag for captains.', details: { 'Fuel': '90 oct + diesel', 'Pump-out': 'Multiple stations' } },
+  { id: 'f-02', name: 'Bald Ridge Fuel Dock', type: 'fuel', lat: 34.1920, lng: -84.1140, description: 'Best fuel dock on the lake. 90 oct non-ethanol marine grade, diesel, multiple pump-out stations. Well shielded from rough water. Wind flag for captains.', details: { 'Fuel': '90 oct + diesel', 'Pump-out': 'Multiple stations' } },
   { id: 'f-03', name: 'Aqualand Fuel Dock', type: 'fuel', lat: 34.2014, lng: -83.9640, description: 'Full fuel dock at Safe Harbor Aqualand. Gas and diesel. Pump-out station.', details: { 'Fuel': 'Gas + diesel', 'Pump-out': 'Yes' } },
   { id: 'f-04', name: 'Lazy Days Fuel Dock', type: 'fuel', lat: 34.1655, lng: -84.0014, description: 'Fuel dock at Lazy Days. Pre-fueling service for dry stack customers. Wash racks available.', details: { 'Fuel': 'Gas + diesel' } },
-  { id: 'f-05', name: 'Gainesville Marina Fuel', type: 'fuel', lat: 34.3145, lng: -83.8775, description: 'Northernmost fuel on the lake. Only fuel north of Browns Bridge. Gas available.', details: { 'Fuel': 'Gas' } },
-  { id: 'f-06', name: 'Port Royale Fuel Dock', type: 'fuel', lat: 34.2200, lng: -84.0825, description: '90 oct non-ethanol fuel. Pay at the pump closes same time as restaurant.', details: { 'Fuel': '90 oct non-ethanol' } },
-  { id: 'f-07', name: 'Sugar Creek Fuel', type: 'fuel', lat: 34.2295, lng: -84.0615, description: 'Mid-lake west-side fuel stop at Sugar Creek Marina.', details: { 'Fuel': 'Gas' } },
-  { id: 'f-08', name: 'Hideaway Bay Fuel', type: 'fuel', lat: 34.2355, lng: -83.9375, description: 'Fuel dock at Hideaway Bay Marina in Flowery Branch.', details: { 'Fuel': 'Gas' } },
+  { id: 'f-05', name: 'Gainesville Marina Fuel', type: 'fuel', lat: 34.3149, lng: -83.8770, description: 'Northernmost fuel on the lake. Only fuel north of Browns Bridge. Gas available.', details: { 'Fuel': 'Gas' } },
+  { id: 'f-06', name: 'Port Royale Fuel Dock', type: 'fuel', lat: 34.2195, lng: -84.0830, description: '90 oct non-ethanol fuel. Pay at the pump closes same time as restaurant.', details: { 'Fuel': '90 oct non-ethanol' } },
+  { id: 'f-07', name: 'Sugar Creek Fuel', type: 'fuel', lat: 34.2290, lng: -84.0620, description: 'Mid-lake west-side fuel stop at Sugar Creek Marina.', details: { 'Fuel': 'Gas' } },
+  { id: 'f-08', name: 'Hideaway Bay Fuel', type: 'fuel', lat: 34.2350, lng: -83.9380, description: 'Fuel dock at Hideaway Bay Marina in Flowery Branch.', details: { 'Fuel': 'Gas' } },
+  { id: 'f-09', name: 'Habersham Marina Fuel', type: 'fuel', lat: 34.1913, lng: -84.1017, description: '90 oct non-ethanol recreational fuel at Habersham Marina in Cumming. Dry stack marina.', details: { 'Fuel': '90 oct non-ethanol' } },
+  { id: 'f-10', name: 'Harbor Landing / Margaritaville Fuel', type: 'fuel', lat: 34.1700, lng: -84.0340, description: 'Diesel and non-ethanol fuel at Harbor Landing Marina Basin near Margaritaville Water Park. Ship store. Pump-out services.', details: { 'Fuel': 'Diesel + non-ethanol', 'Pump-out': 'Yes' } },
+  { id: 'f-11', name: 'Port of Indecision Fuel', type: 'fuel', lat: 34.1740, lng: -84.0300, description: 'Regular fuel, high test, and ValvTect at Port of Indecision near Paradise Beach, Lanier Islands. Ship store.', details: { 'Fuel': 'Regular + high test + ValvTect' } },
 
   // ╔══════════════════════════════════════════════════════════════════════╗
   // ║  RESTAURANTS — Dock-accessible waterfront dining                    ║
