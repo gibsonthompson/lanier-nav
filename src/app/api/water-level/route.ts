@@ -1,78 +1,153 @@
-/**
- * Water Router — Direct course navigation for Lake Lanier
- * 
- * Boats navigate in straight lines on open water (unlike cars on roads).
- * This provides direct course routing with hazard awareness.
- * 
- * Future: Use real shoreline GeoJSON for land avoidance and channel routing.
- */
+import { NextResponse } from 'next/server';
 
-import type { Hazard } from '@/data/hazards';
+// USGS Gauge 02334400 — Lake Sidney Lanier at Buford Dam
+// Parameter 00062 = Lake/reservoir water surface elevation (ft above NGVD29)
+// This is a FREE public API — no API key needed
+// Data updates every 15 minutes from the USGS sensor
 
-export interface RouteResult {
-  path: [number, number][];
-  distance_nm: number;
-  hazards_nearby: number;
-  min_depth_ft: number;
-  warnings: string[];
-}
+const USGS_SITE_ID = '02334400';
+const PARAM_LAKE_ELEVATION = '00062'; // Reservoir elevation in ft
 
-function haversineNM(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3440.065;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+// USACE CWMS Data API (RADAR) — also free, no key needed
+// Provides outflow, inflow, precipitation from Corps operations
+const CWMS_BASE = 'https://cwms-data.usace.army.mil/cwms-data';
 
-export function findWaterRoute(
-  startLng: number, startLat: number,
-  endLng: number, endLat: number,
-  hazards: Hazard[], currentWaterLevel: number
-): RouteResult {
-  const warnings: string[] = [];
-  const distance = haversineNM(startLat, startLng, endLat, endLng);
+export async function GET() {
+  try {
+    // ── 1. Fetch current lake elevation from USGS ──
+    // The USGS Instantaneous Values API returns the latest sensor reading
+    // NOTE: USGS is migrating to api.waterdata.usgs.gov/ogcapi/ by 2027
+    // For now, the legacy endpoint still works perfectly
+    const usgsUrl = new URL('https://waterservices.usgs.gov/nwis/iv/');
+    usgsUrl.searchParams.set('format', 'json');
+    usgsUrl.searchParams.set('sites', USGS_SITE_ID);
+    usgsUrl.searchParams.set('parameterCd', PARAM_LAKE_ELEVATION);
+    usgsUrl.searchParams.set('siteStatus', 'all');
 
-  // Direct course line with intermediate points for smooth rendering
-  const steps = Math.max(2, Math.ceil(distance / 0.5)); // point every ~0.5nm
-  const path: [number, number][] = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    path.push([
-      startLng + (endLng - startLng) * t,
-      startLat + (endLat - startLat) * t,
-    ]);
-  }
+    const usgsRes = await fetch(usgsUrl.toString(), {
+      headers: { 'Accept': 'application/json' },
+      next: { revalidate: 900 }, // Cache for 15 min (matches USGS update interval)
+    });
 
-  // Check hazards near route
-  let hazardsNearby = 0;
-  const BUFFER = 0.003; // ~300m buffer
-  for (const h of hazards) {
-    const effectiveDepth = currentWaterLevel - h.elevation_ft;
-    if (effectiveDepth < 6) {
-      // Check distance from hazard to route line
-      for (let i = 0; i < path.length - 1; i++) {
-        const dist = pointToSegmentDist(h.lng, h.lat, path[i][0], path[i][1], path[i + 1][0], path[i + 1][1]);
-        if (dist < BUFFER) {
-          hazardsNearby++;
-          break;
-        }
-      }
+    if (!usgsRes.ok) {
+      throw new Error(`USGS API returned ${usgsRes.status}`);
     }
+
+    const usgsData = await usgsRes.json();
+
+    // Parse the USGS response structure
+    const timeSeries = usgsData?.value?.timeSeries?.[0];
+    const latestValue = timeSeries?.values?.[0]?.value?.[0];
+
+    const elevation = latestValue ? parseFloat(latestValue.value) : null;
+    const timestamp = latestValue?.dateTime || null;
+    const siteName = timeSeries?.sourceInfo?.siteName || 'Lake Sidney Lanier';
+
+    // ── 2. Calculate derived values ──
+    const FULL_POOL = 1071.0;
+    const belowFullPool = elevation ? FULL_POOL - elevation : null;
+
+    // Determine operational status
+    let status: 'normal' | 'low' | 'very_low' | 'critical' = 'normal';
+    if (belowFullPool !== null) {
+      if (belowFullPool <= 2) status = 'normal';
+      else if (belowFullPool <= 5) status = 'low';
+      else if (belowFullPool <= 10) status = 'very_low';
+      else status = 'critical';
+    }
+
+    // ── 3. Build response ──
+    return NextResponse.json({
+      success: true,
+      data: {
+        elevation_ft: elevation,
+        full_pool_ft: FULL_POOL,
+        below_full_pool_ft: belowFullPool ? parseFloat(belowFullPool.toFixed(2)) : null,
+        status,
+        timestamp,
+        site_name: siteName,
+        site_id: USGS_SITE_ID,
+        source: 'USGS NWIS Instantaneous Values',
+        source_url: `https://waterdata.usgs.gov/monitoring-location/USGS-${USGS_SITE_ID}/`,
+      },
+      // Info about available data sources for future integration
+      available_sources: {
+        usgs_nwis: {
+          description: 'USGS National Water Information System',
+          endpoint: 'https://waterservices.usgs.gov/nwis/iv/',
+          site_id: USGS_SITE_ID,
+          parameters: {
+            '00062': 'Lake elevation (ft)',
+          },
+          update_interval: '15 minutes',
+          cost: 'Free — no API key required',
+          note: 'Migrating to api.waterdata.usgs.gov by 2027',
+        },
+        usgs_new_api: {
+          description: 'USGS Water Data OGC API (new)',
+          endpoint: `https://api.waterdata.usgs.gov/ogcapi/v0/`,
+          note: 'New API replacing waterservices. Requires API key for heavy usage (100+ req/hr).',
+          cost: 'Free with API key for rate limiting',
+        },
+        usace_cwms: {
+          description: 'USACE Corps Water Management System (RADAR)',
+          endpoint: CWMS_BASE,
+          provides: ['outflow', 'inflow', 'precipitation', 'generation schedule'],
+          cost: 'Free — no API key required',
+          swagger: `${CWMS_BASE}/swagger-ui.html`,
+        },
+        usace_arcgis: {
+          description: 'USACE Lake Lanier Navigation Map (ArcGIS)',
+          url: 'https://www.arcgis.com/apps/webappviewer/index.html?id=b7ec0d32c7814763a8ac464d24419741',
+          provides: [
+            'Boat ramp locations with elevation data',
+            'All Aids to Navigation (ATONs) / buoy locations',
+            'Low water hazard markers',
+            'Fish attractor locations',
+            'Bridge and powerline clearances',
+            'Park boundaries',
+          ],
+          note: 'Features with known elevation auto-update depth/clearance from USGS gauge hourly',
+          cost: 'Free — public ArcGIS web app with REST feature services',
+        },
+        navionics_web_api: {
+          description: 'Navionics/Garmin SonarChart HD Bathymetry',
+          endpoint: 'https://webapiv2.navionics.com/',
+          provides: ['HD depth contours', 'SonarChart bathymetry', 'Nautical chart overlay'],
+          cost: 'Free tier available — request navKey from Garmin developer portal',
+          apply_url: 'https://www.garmin.com/en-US/forms/navionics-web-api/',
+        },
+        noaa_weather: {
+          description: 'NOAA Weather API',
+          endpoint: 'https://api.weather.gov/',
+          provides: ['Wind speed/direction', 'Storm alerts', 'Temperature', 'Precipitation forecast'],
+          cost: 'Free — requires User-Agent header with contact info',
+        },
+        lakelanierwater: {
+          description: 'LakeLanierWater.com (community aggregator)',
+          url: 'https://lakelanierwater.com/',
+          provides: ['Pre-processed elevation', 'Historical charts', 'Year-over-year comparison'],
+          note: 'Built by Alexander King — aggregates USGS + USACE data. Good reference but scraping not recommended.',
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error('Water level fetch error:', error);
+
+    // Return fallback data so the app still works
+    return NextResponse.json({
+      success: false,
+      error: error.message,
+      data: {
+        elevation_ft: null,
+        full_pool_ft: 1071.0,
+        below_full_pool_ft: null,
+        status: 'unknown',
+        timestamp: null,
+        site_name: 'Lake Sidney Lanier',
+        site_id: USGS_SITE_ID,
+        source: 'USGS NWIS (failed to fetch)',
+      },
+    });
   }
-
-  if (hazardsNearby > 0) {
-    warnings.push(`${hazardsNearby} hazard${hazardsNearby > 1 ? 's' : ''} near route — proceed with caution`);
-  }
-
-  return { path, distance_nm: distance, hazards_nearby: hazardsNearby, min_depth_ft: 0, warnings };
-}
-
-function pointToSegmentDist(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
-  const dx = x2 - x1, dy = y2 - y1;
-  const len2 = dx * dx + dy * dy;
-  if (len2 === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
-  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2));
-  return Math.sqrt((px - (x1 + t * dx)) ** 2 + (py - (y1 + t * dy)) ** 2);
 }
