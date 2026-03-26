@@ -89,6 +89,8 @@ export default function Home() {
   const [newPinData, setNewPinData] = useState({ name: '', description: '', subtype: '' });
   const [allPOIs, setAllPOIs] = useState<POI[]>(SAMPLE_POIS);
   const [allHazards, setAllHazards] = useState<Hazard[]>(SAMPLE_HAZARDS);
+  const [editMode, setEditMode] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const currentLevel = waterLevel.elevation_ft ?? FULL_POOL - 4.87;
 
@@ -103,7 +105,7 @@ export default function Home() {
   // Init map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
-    const m = new maplibregl.Map({ container: mapContainer.current, style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', center: LANIER_CENTER, zoom: LANIER_ZOOM, minZoom: 10, maxZoom: 18, pitch: 0 });
+    const m = new maplibregl.Map({ container: mapContainer.current, style: { version: 8, sources: { 'esri-sat': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 19, attribution: 'Esri, Maxar, Earthstar Geographics' } }, layers: [{ id: 'satellite', type: 'raster', source: 'esri-sat' }] }, center: LANIER_CENTER, zoom: LANIER_ZOOM, minZoom: 10, maxZoom: 18, pitch: 0 });
     m.on('load', () => {
       m.addSource('depth-zones', { type: 'geojson', data: DEPTH_GEOJSON });
       DEPTH_ZONES.forEach((zone) => {
@@ -222,9 +224,16 @@ export default function Home() {
         if (!poiFilters[poi.type]) return; // skip filtered-out types
         const c = POI_CONFIG[poi.type]; const svg = MARKER_SVG[poi.type] || '';
         const el = document.createElement('div'); el.className = 'map-marker';
-        el.innerHTML = `<div class="marker-icon" style="background:${c.color}">${svg}</div>`;
+        el.innerHTML = `<div class="marker-icon" style="background:${c.color}${editMode ? ';box-shadow:0 0 8px rgba(34,211,238,0.6)' : ''}">${svg}</div>`;
         el.addEventListener('click', (e) => { e.stopPropagation(); setSelectedPOI(poi); setSelectedHazard(null); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14, duration: 800 }); });
-        markersRef.current.push(new maplibregl.Marker({ element: el }).setLngLat([poi.lng, poi.lat]).addTo(map.current!));
+        const marker = new maplibregl.Marker({ element: el, draggable: editMode }).setLngLat([poi.lng, poi.lat]).addTo(map.current!);
+        if (editMode) {
+          marker.on('dragend', () => {
+            const lngLat = marker.getLngLat();
+            setAllPOIs(prev => prev.map(p => p.id === poi.id ? { ...p, lat: Math.round(lngLat.lat * 10000) / 10000, lng: Math.round(lngLat.lng * 10000) / 10000 } : p));
+          });
+        }
+        markersRef.current.push(marker);
       });
     }
     if (poiFilters.hazards) {
@@ -242,7 +251,7 @@ export default function Home() {
       el.innerHTML = '<div style="width:20px;height:20px;border-radius:50%;background:#22d3ee;border:3px solid #fff;box-shadow:0 0 12px rgba(34,211,238,0.5)"></div>';
       markersRef.current.push(new maplibregl.Marker({ element: el }).setLngLat([navTarget.lng, navTarget.lat]).addTo(map.current!));
     }
-  }, [mapLoaded, poiFilters, allPOIs, allHazards, currentLevel, navTarget]);
+  }, [mapLoaded, poiFilters, allPOIs, allHazards, currentLevel, navTarget, editMode]);
 
   // Depth visibility
   useEffect(() => {
@@ -261,6 +270,26 @@ export default function Home() {
     }
     setPendingPin(null); setShowCreateForm(false); setCreatePinMode(null); setNewPinData({ name: '', description: '', subtype: '' });
   }, [pendingPin, newPinData, currentLevel]);
+
+  const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedPOI) return;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('poi_id', selectedPOI.id);
+      const res = await fetch('/api/photos', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok) alert('Photo uploaded!');
+      else alert(`Upload failed: ${data.error}`);
+    } catch { alert('Upload failed — check your connection'); }
+    e.target.value = '';
+  }, [selectedPOI]);
+
+  const exportPOIs = useCallback(() => {
+    const data = allPOIs.map(p => `  { id: '${p.id}', name: '${p.name.replace(/'/g, "\\'")}', type: '${p.type}', lat: ${p.lat}, lng: ${p.lng} },`).join('\n');
+    navigator.clipboard.writeText(data).then(() => alert(`${allPOIs.length} POI coordinates copied to clipboard`));
+  }, [allPOIs]);
 
   const cancelNav = useCallback(() => {
     setNavTarget(null); setNavInfo(null); setRouteResult(null);
@@ -281,7 +310,7 @@ export default function Home() {
       {/* ─── Top bar ─── */}
       <div className="top-bar">
         <div className="app-brand">
-          <div className="app-logo">LN</div>
+          <div className="app-logo" onContextMenu={(e) => { e.preventDefault(); setEditMode(true); }} onDoubleClick={() => setEditMode(true)}>LN</div>
           <div><div className="app-title">Lanier Nav</div><div className="app-subtitle">Lake Lanier</div></div>
         </div>
         <div className="water-level-badge">
@@ -443,7 +472,7 @@ export default function Home() {
           <div className="detail-description">{selectedPOI.description}</div>
           {selectedPOI.details && <div className="detail-meta">{Object.entries(selectedPOI.details).map(([k, v]) => <div key={k} className="meta-item"><div className="meta-label">{k}</div><div className="meta-value">{v}</div></div>)}</div>}
           <div className="detail-actions">
-            <button className="btn btn-secondary" style={{ flex: 1 }}><IconCamera size={14} /> Photo</button>
+            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => photoInputRef.current?.click()}><IconCamera size={14} /> Photo</button>
             <button className="btn btn-secondary" style={{ flex: 1 }}><IconChat size={14} /> Comment</button>
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigateTo({ lng: selectedPOI.lng, lat: selectedPOI.lat, name: selectedPOI.name })}>
               <IconNavigation size={14} /> Navigate
@@ -479,6 +508,18 @@ export default function Home() {
           </>);
         })()}
       </div>
+
+      {/* Hidden photo input */}
+      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handlePhotoUpload} />
+
+      {/* Edit mode banner */}
+      {editMode && (
+        <div style={{ position: 'absolute', top: 70, left: '50%', transform: 'translateX(-50%)', zIndex: 20, background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: 'var(--radius-lg)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--accent-teal)', backdropFilter: 'blur(12px)' }}>
+          <span style={{ fontWeight: 600 }}>EDIT MODE</span> — drag pins to reposition
+          <button onClick={exportPOIs} style={{ background: 'rgba(34,211,238,0.2)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: 6, color: 'var(--accent-teal)', padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Copy coords</button>
+          <button onClick={() => setEditMode(false)} style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: 'var(--accent-red)', padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Done</button>
+        </div>
+      )}
 
       {/* ─── Bottom nav ─── */}
       <div className="bottom-nav">
