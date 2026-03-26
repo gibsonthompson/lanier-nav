@@ -1,341 +1,177 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg-primary: #0a0e17;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1a2332;
-  --bg-card: #151d2e;
-  --bg-card-hover: #1c2740;
-  --text-primary: #e8ecf4;
-  --text-secondary: #8895a7;
-  --text-muted: #5a6578;
-  --accent-teal: #22d3ee;
-  --accent-teal-dim: rgba(34, 211, 238, 0.15);
-  --accent-amber: #f59e0b;
-  --accent-amber-dim: rgba(245, 158, 11, 0.12);
-  --accent-red: #ef4444;
-  --accent-red-dim: rgba(239, 68, 68, 0.12);
-  --accent-green: #10b981;
-  --accent-green-dim: rgba(16, 185, 129, 0.12);
-  --accent-blue: #3b82f6;
-  --border-primary: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
-  --font-sans: 'DM Sans', -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-  /* PWA safe-area */
+  --waze-white: #ffffff;
+  --waze-bg: #f2f3f5;
+  --waze-card: #ffffff;
+  --waze-border: #e4e6ea;
+  --waze-text: #0d2137;
+  --waze-text-secondary: #6b7280;
+  --waze-text-muted: #9ca3af;
+  --waze-teal: #1a9e96;
+  --waze-teal-dark: #0d3b66;
+  --waze-teal-dim: rgba(26,158,150,0.08);
+  --waze-blue: #0d3b66;
+  --waze-green: #2cb67d;
+  --waze-orange: #f59e0b;
+  --waze-red: #ea4335;
+  --waze-red-dim: rgba(234,67,53,0.08);
+  --waze-shadow: 0 2px 12px rgba(0,0,0,0.12);
+  --waze-shadow-lg: 0 4px 24px rgba(0,0,0,0.18);
+  --waze-radius: 16px;
+  --waze-radius-sm: 10px;
+  --waze-radius-pill: 999px;
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
-  --sal: env(safe-area-inset-left, 0px);
-  --sar: env(safe-area-inset-right, 0px);
-  --bottom-nav-h: 64px;
+  --font: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
 }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoothing:antialiased}
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+.map-wrapper{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden}
+.map-container{width:100%;height:100%}
+.maplibregl-ctrl-attrib,.maplibregl-ctrl-logo{display:none!important}
 
-html, body { height: 100%; width: 100%; overflow: hidden; font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+/* GPS Marker — Waze blue dot */
+.gps-marker{position:relative;width:48px;height:48px}
+.gps-dot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:var(--waze-blue);border:3px solid white;box-shadow:0 0 0 2px rgba(13,59,102,0.3),var(--waze-shadow);z-index:2}
+.gps-heading{position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:12px solid var(--waze-blue);transform-origin:bottom center}
+.gps-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:rgba(13,59,102,0.1);border:1.5px solid rgba(13,59,102,0.2);animation:gps-pulse 2.5s ease-out infinite}
+@keyframes gps-pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
 
-#__next { height: 100%; }
+/* Map Markers */
+.map-marker{cursor:pointer;transition:transform .15s ease}
+.map-marker:hover{transform:scale(1.15)}
+.marker-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+.hazard-marker-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);transform:rotate(45deg)}
+.hazard-marker-icon svg{transform:rotate(-45deg)}
 
-/* ─── Map ─── */
-.map-wrapper { position: relative; width: 100%; height: 100%; }
-.map-container { width: 100%; height: 100%; }
+/* Speed Circle */
+.speed-circle{position:absolute;bottom:calc(90px + var(--sab));left:16px;z-index:15;width:64px;height:64px;border-radius:50%;background:var(--waze-card);border:3px solid var(--waze-border);box-shadow:var(--waze-shadow);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.speed-circle.active{border-color:var(--waze-teal)}
+.speed-value{font-size:22px;font-weight:800;color:var(--waze-text);line-height:1}
+.speed-unit{font-size:9px;font-weight:600;color:var(--waze-text-muted);text-transform:uppercase;letter-spacing:.5px}
 
-/* ─── Top bar ─── */
-.top-bar {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: calc(12px + var(--sat)) 16px 12px;
-  padding-left: calc(16px + var(--sal));
-  padding-right: calc(16px + var(--sar));
-  background: linear-gradient(to bottom, rgba(10,14,23,0.92) 0%, rgba(10,14,23,0.80) 80%, transparent 100%);
-  pointer-events: none;
-}
-.top-bar > * { pointer-events: auto; }
+/* Water Level Badge */
+.water-badge{position:absolute;top:calc(12px + var(--sat));left:12px;z-index:15;background:var(--waze-card);border-radius:var(--waze-radius-sm);box-shadow:var(--waze-shadow);padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--waze-text)}
+.water-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.water-level-num{font-weight:700;font-size:13px}
+.water-level-diff{font-size:11px;color:var(--waze-text-muted)}
 
-.app-brand { display: flex; align-items: center; gap: 10px; }
-.app-logo {
-  width: 36px; height: 36px; border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--accent-teal), #0891b2);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 17px; font-weight: 700; color: #0a0e17; letter-spacing: -1px;
-}
-.app-title { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
-.app-subtitle { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+/* FABs */
+.fab-stack{position:absolute;right:12px;z-index:15;display:flex;flex-direction:column;gap:10px}
+.fab-stack.top{top:calc(12px + var(--sat))}
+.fab-stack.bottom{bottom:calc(90px + var(--sab))}
+.fab-btn{width:48px;height:48px;border-radius:50%;background:var(--waze-card);border:none;box-shadow:var(--waze-shadow);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--waze-text-secondary);transition:all .2s;font-family:var(--font)}
+.fab-btn:active{transform:scale(.92)}
+.fab-btn.active{background:var(--waze-blue);color:white;box-shadow:0 2px 12px rgba(13,59,102,0.4)}
+.fab-btn.hazard{color:var(--waze-orange)}
 
-/* ─── Water level badge ─── */
-.water-level-badge {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-  background: var(--bg-card); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); backdrop-filter: blur(12px);
-}
-.water-level-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s ease-in-out infinite; flex-shrink: 0; }
-@keyframes pulse { 0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(16,185,129,0.4); } 50% { opacity:.8; box-shadow:0 0 0 6px rgba(16,185,129,0); } }
-.water-level-text { font-size: 11px; color: var(--text-muted); }
-.water-level-value { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--accent-teal); }
+/* Where To Bar */
+.where-to-bar{position:absolute;bottom:calc(16px + var(--sab));left:12px;right:12px;z-index:16;background:var(--waze-card);border-radius:var(--waze-radius);box-shadow:var(--waze-shadow-lg);padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
+.where-to-bar:active{transform:scale(.98)}
+.where-to-icon{width:36px;height:36px;border-radius:50%;background:var(--waze-teal);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.where-to-text{font-size:16px;font-weight:500;color:var(--waze-text-muted)}
 
-/* ─── Layer panel ─── */
-.layer-panel {
-  position: absolute; top: 70px; right: 16px; z-index: 10;
-  display: flex; flex-direction: column; gap: 4px;
-  background: var(--bg-card); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: 6px; backdrop-filter: blur(12px);
-}
-.layer-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 42px; height: 42px; border: none; border-radius: var(--radius-md);
-  background: transparent; color: var(--text-muted); cursor: pointer;
-  transition: all 0.2s; position: relative;
-}
-.layer-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
-.layer-btn.active { background: var(--accent-teal-dim); color: var(--accent-teal); }
-.layer-btn-tooltip {
-  position: absolute; right: 52px; white-space: nowrap;
-  padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-sm); font-size: 12px; color: var(--text-primary);
-  opacity: 0; pointer-events: none; transition: opacity 0.15s;
-}
-.layer-btn:hover .layer-btn-tooltip { opacity: 1; }
+/* Search Sheet */
+.search-sheet{position:absolute;bottom:0;left:0;right:0;z-index:25;background:var(--waze-card);border-radius:var(--waze-radius) var(--waze-radius) 0 0;box-shadow:var(--waze-shadow-lg);max-height:75vh;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px calc(16px + var(--sab));transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.search-sheet.open{transform:translateY(0)}
+.search-input-wrap{display:flex;align-items:center;gap:10px;background:var(--waze-bg);border-radius:var(--waze-radius-sm);padding:12px 14px;margin-bottom:12px}
+.search-input{flex:1;border:none;background:none;outline:none;font-family:var(--font);font-size:15px;color:var(--waze-text)}
+.search-input::placeholder{color:var(--waze-text-muted)}
+.search-section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--waze-text-muted);margin:14px 0 8px}
+.search-result{display:flex;align-items:center;gap:12px;padding:12px 8px;border-radius:var(--waze-radius-sm);cursor:pointer;transition:background .15s}
+.search-result:active{background:var(--waze-bg)}
+.search-result-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.search-result-info{flex:1;min-width:0}
+.search-result-name{font-size:14px;font-weight:600;color:var(--waze-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-result-detail{font-size:12px;color:var(--waze-text-muted);margin-top:1px}
+.search-category-chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.search-category-chips::-webkit-scrollbar{display:none}
+.category-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--waze-radius-pill);border:1.5px solid var(--waze-border);background:var(--waze-card);font-family:var(--font);font-size:12px;font-weight:500;color:var(--waze-text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap}
+.category-chip.active{border-color:var(--waze-teal);color:var(--waze-teal);background:var(--waze-teal-dim)}
 
-/* ─── Bottom nav (mobile) ─── */
-.bottom-nav {
-  position: absolute; bottom: 0; left: 0; right: 0; z-index: 15;
-  display: flex; align-items: stretch; justify-content: space-around;
-  height: calc(var(--bottom-nav-h) + var(--sab));
-  padding-bottom: var(--sab);
-  background: var(--bg-card); border-top: 1px solid var(--border-primary);
-  backdrop-filter: blur(16px);
-}
-.bottom-nav-btn {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 3px; border: none; background: transparent;
-  color: var(--text-muted); cursor: pointer; transition: color 0.15s;
-  font-family: var(--font-sans); padding: 6px 0;
-  min-height: 44px; /* touch target */
-}
-.bottom-nav-btn.active { color: var(--accent-teal); }
-.bottom-nav-btn:active { opacity: 0.7; }
-.bottom-nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.3px; }
+/* Navigation HUD — Waze top + bottom */
+.nav-top-bar{position:absolute;top:0;left:0;right:0;z-index:18;background:linear-gradient(135deg, #1a9e96, #0d3b66);color:white;padding:calc(14px + var(--sat)) 16px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 16px rgba(13,59,102,0.3)}
+.nav-bearing-circle{width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.nav-bearing-deg{font-size:17px;font-weight:800;line-height:1}
+.nav-bearing-dir{font-size:10px;font-weight:600;opacity:.85}
+.nav-instruction{flex:1;min-width:0}
+.nav-instruction-heading{font-size:11px;font-weight:500;opacity:.8;text-transform:uppercase;letter-spacing:.5px}
+.nav-instruction-dest{font-size:18px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-instruction-distance{font-size:13px;font-weight:500;opacity:.9;margin-top:2px}
 
-/* ─── Detail panels ─── */
-.detail-overlay {
-  position: absolute; bottom: calc(var(--bottom-nav-h) + var(--sab));
-  left: 0; right: 0; z-index: 20; max-height: 50vh;
-  background: var(--bg-card); border-top: 1px solid var(--border-primary);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  box-shadow: var(--shadow-lg);
-  transform: translateY(calc(100% + var(--bottom-nav-h) + var(--sab)));
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  overflow-y: auto; overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-.detail-overlay.open { transform: translateY(0); }
-.detail-overlay.hazard { border-top-color: rgba(239, 68, 68, 0.2); }
+.nav-bottom-bar{position:absolute;bottom:0;left:0;right:0;z-index:18;background:var(--waze-card);padding:16px 16px calc(14px + var(--sab));box-shadow:0 -2px 16px rgba(0,0,0,0.08)}
+.nav-stats{display:flex;align-items:center;gap:4px;margin-bottom:14px}
+.nav-stat{flex:1;text-align:center}
+.nav-stat-value{font-size:24px;font-weight:800;color:var(--waze-text)}
+.nav-stat-label{font-size:10px;font-weight:600;color:var(--waze-text-muted);text-transform:uppercase;letter-spacing:.5px}
+.nav-stat-divider{width:1px;height:36px;background:var(--waze-border);flex-shrink:0}
+.nav-actions{display:flex;gap:10px}
+.nav-btn-stop{flex:1;padding:14px;border-radius:var(--waze-radius-sm);background:var(--waze-red);color:white;border:none;font-family:var(--font);font-size:15px;font-weight:700;cursor:pointer;transition:all .15s}
+.nav-btn-stop:active{transform:scale(.97);opacity:.9}
+.nav-btn-recenter{width:48px;height:48px;border-radius:50%;background:var(--waze-bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--waze-teal);flex-shrink:0}
 
-.detail-handle { display: flex; justify-content: center; padding: 10px 0 4px; }
-.detail-handle-bar { width: 36px; height: 4px; border-radius: 2px; background: var(--text-muted); opacity: 0.4; }
+/* Route Warnings */
+.route-warnings{position:absolute;left:12px;right:12px;z-index:17;display:flex;flex-direction:column;gap:6px}
+.route-warning-item{display:flex;align-items:center;gap:8px;background:var(--waze-card);border-radius:var(--waze-radius-sm);padding:10px 14px;font-size:12px;font-weight:500;box-shadow:var(--waze-shadow);color:var(--waze-text)}
+.route-warning-item.caution{border-left:3px solid var(--waze-orange)}
+.route-warning-item.danger{border-left:3px solid var(--waze-red)}
 
-.detail-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 8px 20px 0; }
-.detail-type-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: var(--radius-sm);
-  font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
-}
-.detail-name { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 4px; }
-.detail-rating { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
-.detail-stars { color: var(--accent-amber); letter-spacing: 1px; }
+/* Detail Sheet */
+.detail-sheet{position:absolute;bottom:0;left:0;right:0;z-index:22;background:var(--waze-card);border-radius:var(--waze-radius) var(--waze-radius) 0 0;box-shadow:var(--waze-shadow-lg);padding:0 16px calc(16px + var(--sab));transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.detail-sheet.open{transform:translateY(0)}
+.detail-handle{display:flex;justify-content:center;padding:10px 0 6px}
+.detail-handle-bar{width:36px;height:4px;border-radius:2px;background:var(--waze-border)}
+.detail-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.detail-type-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--waze-radius-pill);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.detail-name{font-size:18px;font-weight:700;color:var(--waze-text);margin-top:4px;line-height:1.2}
+.detail-close{width:32px;height:32px;border-radius:50%;background:var(--waze-bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--waze-text-secondary);margin-left:auto;flex-shrink:0}
+.detail-description{font-size:13px;color:var(--waze-text-secondary);line-height:1.5;margin-bottom:12px}
+.detail-meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px}
+.meta-item{padding:8px 10px;background:var(--waze-bg);border-radius:8px}
+.meta-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--waze-text-muted)}
+.meta-value{font-size:13px;font-weight:600;color:var(--waze-text);margin-top:2px}
+.detail-actions{display:flex;gap:8px}
 
-.detail-close {
-  width: 34px; height: 34px; border: none; border-radius: 50%;
-  background: var(--bg-tertiary); color: var(--text-secondary);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all 0.15s; min-height: 44px; min-width: 44px;
-}
-.detail-close:hover { background: var(--border-hover); color: var(--text-primary); }
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 18px;border-radius:var(--waze-radius-sm);font-family:var(--font);font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s;min-height:44px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--waze-teal);color:white}
+.btn-secondary{background:var(--waze-bg);color:var(--waze-text-secondary)}
+.btn-danger{background:var(--waze-red);color:white}
+.btn-danger-outline{background:var(--waze-red-dim);color:var(--waze-red);border:1px solid rgba(234,67,53,0.2)}
 
-.detail-description { padding: 12px 20px; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+/* Filter Sheet */
+.filter-sheet{position:absolute;bottom:0;left:0;right:0;z-index:25;background:var(--waze-card);border-radius:var(--waze-radius) var(--waze-radius) 0 0;box-shadow:var(--waze-shadow-lg);max-height:65vh;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px calc(16px + var(--sab));transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.filter-sheet.open{transform:translateY(0)}
+.filter-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.filter-title{font-size:17px;font-weight:700;color:var(--waze-text)}
+.filter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.filter-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px;border-radius:var(--waze-radius-sm);border:1.5px solid var(--waze-border);background:var(--waze-card);cursor:pointer;transition:all .15s;font-family:var(--font);min-height:64px}
+.filter-btn.active{border-color:currentColor}
+.filter-btn-label{font-size:10px;font-weight:600}
+.filter-btn-count{font-size:9px;color:var(--waze-text-muted)}
+.filter-section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--waze-text-muted);margin:16px 0 8px}
 
-.detail-meta {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 8px; padding: 0 20px 16px;
-}
-.meta-item { padding: 10px 12px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-primary); }
-.meta-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 3px; }
-.meta-value { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+/* Create Pin */
+.create-pin-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;background:var(--waze-card);border-radius:var(--waze-radius);padding:24px;box-shadow:var(--waze-shadow-lg);text-align:center;min-width:220px}
+.create-form{position:absolute;bottom:0;left:0;right:0;z-index:25;background:var(--waze-card);border-radius:var(--waze-radius) var(--waze-radius) 0 0;box-shadow:var(--waze-shadow-lg);padding:20px 16px calc(20px + var(--sab))}
+.form-label{font-size:12px;font-weight:600;color:var(--waze-text-secondary);margin-bottom:6px;display:block}
+.form-input,.form-textarea,.form-select{width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid var(--waze-border);background:var(--waze-bg);font-family:var(--font);font-size:14px;color:var(--waze-text);outline:none;transition:border-color .15s}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--waze-teal)}
+.form-textarea{resize:vertical;min-height:70px}
 
-.detail-actions { padding: 0 20px 20px; display: flex; gap: 8px; }
+/* Edit Mode */
+.edit-banner{position:absolute;top:calc(12px + var(--sat));left:50%;transform:translateX(-50%);z-index:20;background:var(--waze-card);border:2px solid var(--waze-teal);border-radius:var(--waze-radius-pill);padding:8px 18px;display:flex;align-items:center;gap:10px;box-shadow:var(--waze-shadow);font-size:12px;font-weight:600;color:var(--waze-teal)}
+.edit-banner button{padding:4px 12px;border-radius:6px;font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;border:none}
 
-.severity-high { background: var(--accent-red-dim); color: var(--accent-red); }
-.severity-medium { background: var(--accent-amber-dim); color: var(--accent-amber); }
-.severity-low { background: var(--accent-green-dim); color: var(--accent-green); }
+/* Severity badges */
+.severity-low{background:rgba(34,197,94,0.12);color:var(--waze-green)}
+.severity-medium{background:rgba(245,158,11,0.12);color:var(--waze-orange)}
+.severity-high{background:rgba(234,67,53,0.12);color:var(--waze-red)}
+.severity-critical{background:rgba(234,67,53,0.2);color:var(--waze-red)}
 
-/* ─── Nav HUD ─── */
-.nav-hud {
-  position: absolute; top: 68px; left: 16px; right: 72px; z-index: 10;
-  display: flex; gap: 8px; pointer-events: none;
-}
-.nav-hud > * { pointer-events: auto; }
-.hud-card {
-  background: var(--bg-card); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: 8px 14px;
-  backdrop-filter: blur(12px); display: flex; align-items: center; gap: 12px; font-size: 12px;
-}
-.hud-card.nav { border-color: rgba(34,211,238,0.2); flex: 1; }
-.hud-stat-label { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
-.hud-stat-value { font-family: var(--font-mono); font-weight: 500; }
-
-/* ─── Route warnings ─── */
-.route-warnings {
-  position: absolute; bottom: calc(var(--bottom-nav-h) + var(--sab) + 8px);
-  left: 16px; right: 16px; z-index: 12;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.route-warning-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px; border-radius: var(--radius-md);
-  font-size: 12px; backdrop-filter: blur(8px);
-}
-.route-warning-item.caution { background: var(--accent-amber-dim); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.2); }
-.route-warning-item.danger { background: var(--accent-red-dim); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.2); }
-
-/* ─── Depth legend ─── */
-.depth-legend {
-  position: absolute; bottom: calc(var(--bottom-nav-h) + var(--sab) + 12px);
-  left: 16px; z-index: 10;
-  background: var(--bg-card); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg); padding: 10px 14px;
-  backdrop-filter: blur(12px); min-width: 150px;
-  transition: opacity 0.3s, transform 0.3s;
-}
-.depth-legend.hidden { opacity: 0; transform: translateY(10px); pointer-events: none; }
-.depth-legend-title { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 6px; }
-.depth-legend-item { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
-.depth-legend-swatch { width: 18px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.depth-legend-label { font-size: 10px; color: var(--text-secondary); }
-
-/* ─── Map markers ─── */
-.map-marker { cursor: pointer; transition: transform 0.15s; }
-.map-marker:hover { transform: scale(1.12); }
-
-.marker-icon {
-  width: 34px; height: 34px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  border: 2.5px solid rgba(255,255,255,0.85);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.3);
-}
-
-.hazard-marker-icon {
-  width: 28px; height: 28px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  border: 2.5px solid rgba(255,255,255,0.7);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2);
-}
-
-/* ─── GPS marker ─── */
-.gps-marker { position: relative; width: 28px; height: 28px; }
-.gps-dot {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 16px; height: 16px; border-radius: 50%;
-  background: var(--accent-teal); border: 2.5px solid #fff;
-  box-shadow: 0 0 8px rgba(34, 211, 238, 0.5); z-index: 2;
-}
-.gps-heading {
-  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-  width: 0; height: 0;
-  border-left: 5px solid transparent; border-right: 5px solid transparent;
-  border-bottom: 10px solid var(--accent-teal);
-  transform-origin: center 15px;
-}
-.gps-ring {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 28px; height: 28px; border-radius: 50%;
-  border: 2px solid rgba(34, 211, 238, 0.3);
-  animation: gpsRing 2s ease-out infinite;
-}
-@keyframes gpsRing { 0% { width:28px; height:28px; opacity:0.6; } 100% { width:56px; height:56px; opacity:0; } }
-
-/* ─── Create pin overlay ─── */
-.create-pin-overlay {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  z-index: 15; background: var(--bg-card); border-radius: var(--radius-lg);
-  padding: 16px 24px; text-align: center; backdrop-filter: blur(12px);
-  max-width: 260px;
-}
-
-.create-form {
-  position: absolute; bottom: calc(var(--bottom-nav-h) + var(--sab));
-  left: 0; right: 0; z-index: 25;
-  background: var(--bg-card); border-top: 1px solid var(--border-primary);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  padding: 20px; padding-bottom: calc(20px + var(--sab));
-}
-
-/* ─── Form elements ─── */
-.form-label {
-  display: block; font-size: 11px; text-transform: uppercase;
-  letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 4px;
-}
-.form-input, .form-select, .form-textarea {
-  width: 100%; padding: 10px 12px;
-  background: var(--bg-tertiary); border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md); color: var(--text-primary);
-  font-size: 14px; font-family: var(--font-sans);
-  -webkit-appearance: none; appearance: none;
-}
-.form-textarea { resize: vertical; }
-.form-input:focus, .form-select:focus, .form-textarea:focus {
-  outline: none; border-color: var(--accent-teal);
-}
-
-/* ─── Buttons ─── */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 10px 14px; border: none; border-radius: var(--radius-md);
-  font-size: 13px; font-family: var(--font-sans); cursor: pointer;
-  transition: all 0.15s; min-height: 44px;
-}
-.btn-secondary { background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-primary); }
-.btn-secondary:active { background: var(--bg-card-hover); }
-.btn-primary { background: var(--accent-teal); color: #0a0e17; font-weight: 600; }
-.btn-primary:active { opacity: 0.85; }
-.btn-primary:disabled { background: var(--text-muted); cursor: not-allowed; }
-.btn-danger { background: var(--accent-red); color: #fff; font-weight: 600; }
-.btn-danger-outline { background: var(--accent-red-dim); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.2); }
-
-/* ─── MapLibre overrides ─── */
-.maplibregl-ctrl-group { background: var(--bg-card) !important; border: 1px solid var(--border-primary) !important; border-radius: var(--radius-md) !important; box-shadow: var(--shadow-sm) !important; }
-.maplibregl-ctrl-group button { background: transparent !important; border-color: var(--border-primary) !important; color: var(--text-secondary) !important; width: 36px !important; height: 36px !important; }
-.maplibregl-ctrl-group button:hover { background: var(--bg-card-hover) !important; }
-.maplibregl-ctrl-attrib { background: rgba(10,14,23,0.6) !important; color: var(--text-muted) !important; font-size: 10px !important; }
-.maplibregl-ctrl-attrib a { color: var(--text-muted) !important; }
-.maplibregl-ctrl-bottom-right { bottom: calc(var(--bottom-nav-h) + var(--sab) + 8px) !important; right: 8px !important; }
-.maplibregl-ctrl-top-right { top: calc(60px + var(--sat)) !important; right: 8px !important; }
-
-/* ─── Scrollbar ─── */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 2px; }
-
-/* ─── Mobile media queries ─── */
-@media (max-width: 480px) {
-  .water-level-badge { padding: 6px 10px; }
-  .water-level-text { font-size: 10px; }
-  .water-level-value { font-size: 12px; }
-  .layer-panel { right: 8px; }
-  .layer-btn { width: 38px; height: 38px; }
-  .layer-btn-tooltip { display: none; } /* hide tooltips on touch */
-  .nav-hud { left: 8px; right: 56px; top: calc(60px + var(--sat)); }
-  .depth-legend { left: 8px; }
-  .detail-meta { grid-template-columns: repeat(2, 1fr); }
-}
-
-/* PWA standalone mode adjustments */
-@media (display-mode: standalone) {
-  .top-bar { padding-top: calc(16px + var(--sat)); }
-}
+/* Backdrop */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:19;opacity:0;pointer-events:none;transition:opacity .3s}
+.backdrop.open{opacity:1;pointer-events:auto}

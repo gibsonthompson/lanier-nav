@@ -90,6 +90,10 @@ export default function Home() {
   const [allPOIs, setAllPOIs] = useState<POI[]>(SAMPLE_POIS);
   const [allHazards, setAllHazards] = useState<Hazard[]>(SAMPLE_HAZARDS);
   const [editMode, setEditMode] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategory, setSearchCategory] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const currentLevel = waterLevel.elevation_ft ?? FULL_POOL - 4.87;
@@ -303,108 +307,70 @@ export default function Home() {
   const POIIcon = selectedPOI ? POI_ICONS[selectedPOI.type] : null;
   const HazardIcon = selectedHazard ? HAZARD_ICONS[selectedHazard.type] : null;
 
+  // Search filtering
+  const filteredSearchPOIs = allPOIs.filter(p => {
+    if (searchCategory && p.type !== searchCategory) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+    }
+    return true;
+  }).slice(0, 30);
+
+  const boatSpeedMPH = gpsPosition?.speed ? gpsPosition.speed * 2.23694 : null;
+
   return (
     <div className="map-wrapper">
       <div ref={mapContainer} className="map-container" />
 
-      {/* ─── Top bar ─── */}
-      <div className="top-bar">
-        <div className="app-brand">
-          <div className="app-logo" onContextMenu={(e) => { e.preventDefault(); setEditMode(true); }} onDoubleClick={() => setEditMode(true)}>LN</div>
-          <div><div className="app-title">Lanier Nav</div><div className="app-subtitle">Lake Lanier</div></div>
-        </div>
-        <div className="water-level-badge">
-          <div className="water-level-dot" style={{ background: levelStatus === 'normal' ? 'var(--accent-green)' : levelStatus === 'low' ? 'var(--accent-amber)' : levelStatus === 'loading' ? 'var(--text-muted)' : 'var(--accent-red)' }} />
-          <div>
-            <div className="water-level-text">USGS Live {waterLevel.timestamp ? <span style={{ opacity: 0.6 }}>{formatTime(waterLevel.timestamp)}</span> : ''}</div>
-            <div className="water-level-value">{waterLevel.elevation_ft?.toFixed(2) ?? '---'} ft <span style={{ color: 'var(--text-muted)', fontSize: 11, marginLeft: 4 }}>({levelDiff > 0 ? `-${levelDiff.toFixed(2)}` : 'full'} ft)</span></div>
+      {/* ─── NAVIGATION MODE: Top Bar (Waze-style bearing + destination) ─── */}
+      {navTarget && navInfo && (
+        <div className="nav-top-bar">
+          <div className="nav-bearing-circle">
+            <div className="nav-bearing-deg">{navInfo.bearing.split('°')[0]}°</div>
+            <div className="nav-bearing-dir">{navInfo.bearing.split(' ')[1] || ''}</div>
           </div>
-        </div>
-      </div>
-
-      {/* ─── Nav HUD ─── */}
-      {(gpsActive || navTarget) && (
-        <div className="nav-hud">
-          {gpsActive && gpsPosition && (
-            <div className="hud-card">
-              <div><div className="hud-stat-label">SPD</div><div className="hud-stat-value" style={{ color: 'var(--accent-teal)' }}>{gpsPosition.speed ? `${(gpsPosition.speed * 1.94384).toFixed(1)} kn` : '-- kn'}</div></div>
-              <div><div className="hud-stat-label">HDG</div><div className="hud-stat-value" style={{ color: 'var(--accent-teal)' }}>{gpsPosition.heading ? `${gpsPosition.heading.toFixed(0)}°` : '--°'}</div></div>
-            </div>
-          )}
-          {navTarget && navInfo && (
-            <div className="hud-card nav">
-              <IconNavigation size={14} color="var(--accent-teal)" />
-              <span style={{ color: 'var(--accent-teal)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>{navTarget.name || 'WPT'}</span>
-              <div><div className="hud-stat-label">DST</div><div className="hud-stat-value">{navInfo.distance}</div></div>
-              <div><div className="hud-stat-label">BRG</div><div className="hud-stat-value">{navInfo.bearing}</div></div>
-              <div><div className="hud-stat-label">ETA</div><div className="hud-stat-value">{navInfo.eta}</div></div>
-              <button onClick={cancelNav} style={{ marginLeft: 'auto', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 6, color: 'var(--accent-red)', padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-sans)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <IconX size={12} /> End
-              </button>
-            </div>
-          )}
+          <div className="nav-instruction">
+            <div className="nav-instruction-heading">Head {navInfo.bearing.split(' ')[1] || 'toward'}</div>
+            <div className="nav-instruction-dest">{navTarget.name || 'Destination'}</div>
+            <div className="nav-instruction-distance">{navInfo.distance} remaining</div>
+          </div>
         </div>
       )}
 
-      {/* ─── Filter sheet ─── */}
-      {showFilters && (
-        <div style={{ position: 'absolute', bottom: 'calc(var(--bottom-nav-h) + var(--sab))', left: 0, right: 0, zIndex: 18, background: 'var(--bg-card)', borderTop: '1px solid var(--border-primary)', borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0', padding: '16px 16px calc(16px)', maxHeight: '55vh', overflowY: 'auto', overscrollBehavior: 'contain' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Filter map</div>
-            <button className="detail-close" onClick={() => setShowFilters(false)}><IconX size={16} /></button>
+      {/* ─── NAVIGATION MODE: Bottom Bar (Waze-style ETA + distance + speed) ─── */}
+      {navTarget && navInfo && (
+        <div className="nav-bottom-bar">
+          <div className="nav-stats">
+            <div className="nav-stat">
+              <div className="nav-stat-value">{navInfo.eta}</div>
+              <div className="nav-stat-label">ETA</div>
+            </div>
+            <div className="nav-stat-divider" />
+            <div className="nav-stat">
+              <div className="nav-stat-value">{navInfo.distance}</div>
+              <div className="nav-stat-label">Distance</div>
+            </div>
+            <div className="nav-stat-divider" />
+            <div className="nav-stat">
+              <div className="nav-stat-value">{boatSpeedMPH ? `${boatSpeedMPH.toFixed(0)}` : '--'}</div>
+              <div className="nav-stat-label">MPH</div>
+            </div>
           </div>
-          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: 8 }}>Categories</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-            {Object.entries(POI_CONFIG).map(([key, cfg]) => {
-              const Icon = POI_ICONS[key];
-              const count = allPOIs.filter(p => p.type === key).length;
-              return (
-                <button key={key} onClick={() => toggleFilter(key)} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '10px 10px',
-                  background: poiFilters[key] ? `${cfg.color}18` : 'var(--bg-tertiary)',
-                  border: `1px solid ${poiFilters[key] ? `${cfg.color}40` : 'var(--border-primary)'}`,
-                  borderRadius: 'var(--radius-md)', cursor: 'pointer', fontFamily: 'var(--font-sans)',
-                  color: poiFilters[key] ? cfg.color : 'var(--text-muted)', fontSize: 12, transition: 'all 0.15s',
-                  minHeight: 42,
-                }}>
-                  {Icon && <Icon size={15} />}
-                  <span style={{ flex: 1, textAlign: 'left' }}>{cfg.label}</span>
-                  <span style={{ fontSize: 10, opacity: 0.6 }}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', margin: '14px 0 8px' }}>Overlays</div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => toggleFilter('hazards')} style={{
-              flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '10px',
-              background: poiFilters.hazards ? 'var(--accent-red-dim)' : 'var(--bg-tertiary)',
-              border: `1px solid ${poiFilters.hazards ? 'rgba(239,68,68,0.3)' : 'var(--border-primary)'}`,
-              borderRadius: 'var(--radius-md)', cursor: 'pointer', fontFamily: 'var(--font-sans)',
-              color: poiFilters.hazards ? 'var(--accent-red)' : 'var(--text-muted)', fontSize: 12, minHeight: 42,
+          <div className="nav-actions">
+            <button className="nav-btn-stop" onClick={cancelNav}>Stop</button>
+            <button className="nav-btn-recenter" onClick={() => {
+              if (gpsPosition && map.current) { setFollowMode(true); map.current.flyTo({ center: [gpsPosition.lng, gpsPosition.lat], zoom: 15.5, duration: 800 }); }
             }}>
-              <IconWarning size={15} /> Hazards <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 'auto' }}>{allHazards.length}</span>
+              <IconGps size={22} />
             </button>
-            <button onClick={() => toggleFilter('depth')} style={{
-              flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '10px',
-              background: poiFilters.depth ? 'var(--accent-teal-dim)' : 'var(--bg-tertiary)',
-              border: `1px solid ${poiFilters.depth ? 'rgba(34,211,238,0.3)' : 'var(--border-primary)'}`,
-              borderRadius: 'var(--radius-md)', cursor: 'pointer', fontFamily: 'var(--font-sans)',
-              color: poiFilters.depth ? 'var(--accent-teal)' : 'var(--text-muted)', fontSize: 12, minHeight: 42,
-            }}>
-              <IconWaves size={15} /> Depth contours
-            </button>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <button onClick={() => setPoiFilters(p => { const n: Record<string,boolean> = {}; Object.keys(p).forEach(k => n[k] = true); return n; })} className="btn btn-secondary" style={{ flex: 1, fontSize: 12 }}>Show all</button>
-            <button onClick={() => setPoiFilters(p => { const n: Record<string,boolean> = {}; Object.keys(p).forEach(k => n[k] = false); return n; })} className="btn btn-secondary" style={{ flex: 1, fontSize: 12 }}>Hide all</button>
           </div>
         </div>
       )}
 
       {/* ─── Route warnings ─── */}
       {routeResult && routeResult.warnings.length > 0 && (
-        <div className="route-warnings">
+        <div className="route-warnings" style={{ top: navTarget ? `calc(100px + var(--sat))` : `calc(60px + var(--sat))` }}>
           {routeResult.warnings.map((w, i) => (
             <div key={i} className={`route-warning-item ${w.includes('Shallow') || w.includes('hazard') ? 'caution' : 'danger'}`}>
               <IconWarning size={14} /> {w}
@@ -413,29 +379,152 @@ export default function Home() {
         </div>
       )}
 
+      {/* ─── Water Level Badge (top-left floating) ─── */}
+      {!navTarget && (
+        <div className="water-badge" onContextMenu={(e) => { e.preventDefault(); setEditMode(true); }} onDoubleClick={() => setEditMode(true)}>
+          <img src="/logo-navilake.png" alt="NaviLake" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
+          <div>
+            <div className="water-level-num">{waterLevel.elevation_ft?.toFixed(2) ?? '---'} ft</div>
+            <div className="water-level-diff">{levelDiff > 0 ? `${levelDiff.toFixed(1)}ft below full` : 'Full pool'}</div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── FABs right side (Waze-style floating buttons) ─── */}
+      {!navTarget && (
+        <div className="fab-stack bottom">
+          <button className={`fab-btn ${gpsActive ? 'active' : ''}`} onClick={() => {
+            if (gpsActive && !followMode) { setFollowMode(true); if (gpsPosition && map.current) map.current.flyTo({ center: [gpsPosition.lng, gpsPosition.lat], zoom: 15.5, duration: 800 }); }
+            else toggleGPS();
+          }}>
+            <IconGps size={22} />
+          </button>
+          <button className="fab-btn" onClick={() => { setShowFilters(true); setShowSearch(false); setSelectedPOI(null); setSelectedHazard(null); }}>
+            <IconLayers size={22} />
+          </button>
+          <button className="fab-btn hazard" onClick={() => { setCreatePinMode('hazard'); setSelectedPOI(null); setSelectedHazard(null); setShowSearch(false); setShowFilters(false); }}>
+            <IconAlert size={22} />
+          </button>
+        </div>
+      )}
+
+      {/* ─── Speed Circle (bottom-left, Waze style) ─── */}
+      {gpsActive && !navTarget && (
+        <div className={`speed-circle ${boatSpeedMPH && boatSpeedMPH > 1 ? 'active' : ''}`}>
+          <div className="speed-value">{boatSpeedMPH ? boatSpeedMPH.toFixed(0) : '0'}</div>
+          <div className="speed-unit">mph</div>
+        </div>
+      )}
+
+      {/* ─── "Where to?" Bar (bottom, Waze search) ─── */}
+      {!navTarget && !selectedPOI && !selectedHazard && !showFilters && !showCreateForm && !createPinMode && (
+        <div className="where-to-bar" onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
+          <div className="where-to-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+          <span className="where-to-text">Where to?</span>
+        </div>
+      )}
+
+      {/* ─── Search Sheet ─── */}
+      <div className={`search-sheet ${showSearch ? 'open' : ''}`}>
+        <div className="search-input-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input ref={searchInputRef} className="search-input" placeholder="Search marinas, ramps, restaurants..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          <button onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchCategory(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--waze-text-muted)', padding: 4 }}>
+            <IconX size={18} />
+          </button>
+        </div>
+        <div className="search-category-chips">
+          {Object.entries(POI_CONFIG).map(([key, cfg]) => {
+            const Icon = POI_ICONS[key];
+            return (
+              <button key={key} className={`category-chip ${searchCategory === key ? 'active' : ''}`} onClick={() => setSearchCategory(searchCategory === key ? null : key)}>
+                {Icon && <Icon size={14} />} {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="search-section-label">
+          {searchQuery ? `Results (${filteredSearchPOIs.length})` : searchCategory ? (POI_CONFIG as Record<string, {label:string;color:string}>)[searchCategory]?.label || 'All' : 'All locations'}
+        </div>
+        {filteredSearchPOIs.map((poi) => {
+          const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
+          return (
+            <div key={poi.id} className="search-result" onClick={() => {
+              setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
+              setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
+            }}>
+              <div className="search-result-icon" style={{ background: `${c.color}15` }}>
+                {Icon && <Icon size={20} color={c.color} />}
+              </div>
+              <div className="search-result-info">
+                <div className="search-result-name">{poi.name}</div>
+                <div className="search-result-detail">{c.label}</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ─── Backdrop ─── */}
+      <div className={`backdrop ${showSearch || showFilters ? 'open' : ''}`} onClick={() => { setShowSearch(false); setShowFilters(false); setSearchQuery(''); setSearchCategory(null); }} />
+
+      {/* ─── Filter Sheet ─── */}
+      <div className={`filter-sheet ${showFilters ? 'open' : ''}`}>
+        <div className="filter-header">
+          <div className="filter-title">Map layers</div>
+          <button className="detail-close" onClick={() => setShowFilters(false)}><IconX size={16} /></button>
+        </div>
+        <div className="filter-grid">
+          {Object.entries(POI_CONFIG).map(([key, cfg]) => {
+            const Icon = POI_ICONS[key];
+            const count = allPOIs.filter(p => p.type === key).length;
+            return (
+              <button key={key} className={`filter-btn ${poiFilters[key] ? 'active' : ''}`} onClick={() => toggleFilter(key)} style={{ color: poiFilters[key] ? cfg.color : 'var(--waze-text-muted)' }}>
+                {Icon && <Icon size={20} />}
+                <div className="filter-btn-label">{cfg.label}</div>
+                <div className="filter-btn-count">{count}</div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="filter-section-label">Overlays</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className={`filter-btn ${poiFilters.hazards ? 'active' : ''}`} onClick={() => toggleFilter('hazards')} style={{ flex: 1, color: poiFilters.hazards ? 'var(--waze-orange)' : 'var(--waze-text-muted)', flexDirection: 'row', gap: 8 }}>
+            <IconWarning size={18} /> <span className="filter-btn-label">Hazards</span> <span className="filter-btn-count">{allHazards.length}</span>
+          </button>
+          <button className={`filter-btn ${poiFilters.depth ? 'active' : ''}`} onClick={() => toggleFilter('depth')} style={{ flex: 1, color: poiFilters.depth ? 'var(--waze-teal)' : 'var(--waze-text-muted)', flexDirection: 'row', gap: 8 }}>
+            <IconWaves size={18} /> <span className="filter-btn-label">Depth</span>
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <button className="btn btn-secondary" style={{ flex: 1, fontSize: 12 }} onClick={() => setPoiFilters(p => { const n: Record<string,boolean> = {}; Object.keys(p).forEach(k => n[k] = true); return n; })}>Show all</button>
+          <button className="btn btn-secondary" style={{ flex: 1, fontSize: 12 }} onClick={() => setPoiFilters(p => { const n: Record<string,boolean> = {}; Object.keys(p).forEach(k => n[k] = false); return n; })}>Hide all</button>
+        </div>
+      </div>
+
       {/* ─── Create pin mode ─── */}
       {createPinMode && !showCreateForm && (
-        <div className="create-pin-overlay" style={{ borderColor: createPinMode === 'hazard' ? 'rgba(239,68,68,0.3)' : 'rgba(34,211,238,0.3)', border: '1px solid' }}>
-          {createPinMode === 'hazard' ? <IconAlert size={28} color="var(--accent-red)" /> : <IconPin size={28} color="var(--accent-teal)" />}
-          <div style={{ fontSize: 14, fontWeight: 500, margin: '8px 0 4px' }}>Tap map to place</div>
-          <button className="btn btn-secondary" style={{ fontSize: 12, padding: '6px 16px', minHeight: 36 }} onClick={() => { setCreatePinMode(null); setPendingPin(null); }}>Cancel</button>
+        <div className="create-pin-overlay" style={{ border: `2px solid ${createPinMode === 'hazard' ? 'var(--waze-orange)' : 'var(--waze-teal)'}` }}>
+          {createPinMode === 'hazard' ? <IconAlert size={28} color="var(--waze-orange)" /> : <IconPin size={28} color="var(--waze-teal)" />}
+          <div style={{ fontSize: 14, fontWeight: 600, margin: '10px 0 4px', color: 'var(--waze-text)' }}>Tap map to place</div>
+          <div style={{ fontSize: 12, color: 'var(--waze-text-muted)', marginBottom: 12 }}>{createPinMode === 'hazard' ? 'Report a hazard' : 'Add a new spot'}</div>
+          <button className="btn btn-secondary" style={{ fontSize: 12, padding: '8px 20px' }} onClick={() => { setCreatePinMode(null); setPendingPin(null); }}>Cancel</button>
         </div>
       )}
 
       {/* ─── Create pin form ─── */}
       {showCreateForm && pendingPin && (
         <div className="create-form">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              {pendingPin.type === 'hazard' ? <><IconAlert size={20} color="var(--accent-red)" /> Report hazard</> : <><IconPin size={20} color="var(--accent-teal)" /> Add new spot</>}
-            </div>
-            <button className="detail-close" onClick={() => { setShowCreateForm(false); setPendingPin(null); setCreatePinMode(null); }}><IconX size={16} /></button>
-          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div><label className="form-label">Type</label>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--waze-text)' }}>{pendingPin.type === 'hazard' ? 'Report hazard' : 'New spot'}</div>
+            <div>
+              <label className="form-label">Type</label>
               <select className="form-select" value={newPinData.subtype} onChange={(e) => setNewPinData((p) => ({ ...p, subtype: e.target.value }))}>
-                <option value="">Select type...</option>
-                {pendingPin.type === 'poi' ? Object.entries(POI_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>) : Object.entries(HAZARD_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                <option value="">Select...</option>
+                {pendingPin.type === 'hazard' ? Object.entries(HAZARD_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>) : Object.entries(POI_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
             </div>
             <div><label className="form-label">Name</label><input className="form-input" type="text" value={newPinData.name} onChange={(e) => setNewPinData((p) => ({ ...p, name: e.target.value }))} placeholder={pendingPin.type === 'hazard' ? 'e.g. Submerged tree near cove' : 'e.g. Hidden beach spot'} /></div>
@@ -450,15 +539,13 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── Depth legend removed — no real bathymetric data yet ─── */}
-
-      {/* ─── POI detail ─── */}
-      <div className={`detail-overlay ${selectedPOI && !showCreateForm ? 'open' : ''}`}>
+      {/* ─── POI Detail Sheet (Waze destination card) ─── */}
+      <div className={`detail-sheet ${selectedPOI && !showCreateForm ? 'open' : ''}`}>
         {selectedPOI && (<>
           <div className="detail-handle"><div className="detail-handle-bar" /></div>
           <div className="detail-header">
             <div>
-              <div className="detail-type-badge" style={{ background: `${POI_CONFIG[selectedPOI.type].color}20`, color: POI_CONFIG[selectedPOI.type].color }}>
+              <div className="detail-type-badge" style={{ background: `${POI_CONFIG[selectedPOI.type].color}15`, color: POI_CONFIG[selectedPOI.type].color }}>
                 {POIIcon && <POIIcon size={14} />} {POI_CONFIG[selectedPOI.type].label}
               </div>
               <div className="detail-name">{selectedPOI.name}</div>
@@ -469,16 +556,15 @@ export default function Home() {
           {selectedPOI.details && <div className="detail-meta">{Object.entries(selectedPOI.details).map(([k, v]) => <div key={k} className="meta-item"><div className="meta-label">{k}</div><div className="meta-value">{v}</div></div>)}</div>}
           <div className="detail-actions">
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => photoInputRef.current?.click()}><IconCamera size={14} /> Photo</button>
-            <button className="btn btn-secondary" style={{ flex: 1 }}><IconChat size={14} /> Comment</button>
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigateTo({ lng: selectedPOI.lng, lat: selectedPOI.lat, name: selectedPOI.name })}>
-              <IconNavigation size={14} /> Navigate
+            <button className="btn btn-primary" style={{ flex: 2 }} onClick={() => navigateTo({ lng: selectedPOI.lng, lat: selectedPOI.lat, name: selectedPOI.name })}>
+              <IconNavigation size={14} /> Go now
             </button>
           </div>
         </>)}
       </div>
 
-      {/* ─── Hazard detail ─── */}
-      <div className={`detail-overlay hazard ${selectedHazard && !showCreateForm ? 'open' : ''}`}>
+      {/* ─── Hazard Detail Sheet ─── */}
+      <div className={`detail-sheet ${selectedHazard && !showCreateForm ? 'open' : ''}`}>
         {selectedHazard && (() => {
           const c = HAZARD_CONFIG[selectedHazard.type]; const isExp = currentLevel <= selectedHazard.elevation_ft; const depth = currentLevel - selectedHazard.elevation_ft;
           return (<>
@@ -486,20 +572,19 @@ export default function Home() {
             <div className="detail-header">
               <div>
                 <div className={`detail-type-badge severity-${selectedHazard.severity}`}>{HazardIcon && <HazardIcon size={14} />} {c.label} — {selectedHazard.severity}</div>
-                <div className="detail-name" style={{ color: isExp ? 'var(--accent-red)' : 'var(--text-primary)' }}>{isExp ? 'EXPOSED — DANGER' : `${depth.toFixed(1)}ft below surface`}</div>
+                <div className="detail-name" style={{ color: isExp ? 'var(--waze-red)' : 'var(--waze-text)' }}>{isExp ? 'EXPOSED — DANGER' : `${depth.toFixed(1)}ft below surface`}</div>
               </div>
               <button className="detail-close" onClick={() => setSelectedHazard(null)}><IconX size={16} /></button>
             </div>
             <div className="detail-description">{selectedHazard.description}</div>
             <div className="detail-meta">
               <div className="meta-item"><div className="meta-label">Elevation</div><div className="meta-value">{selectedHazard.elevation_ft} ft</div></div>
-              <div className="meta-item"><div className="meta-label">Current depth</div><div className="meta-value" style={{ color: isExp ? 'var(--accent-red)' : depth < 3 ? 'var(--accent-amber)' : 'var(--accent-green)' }}>{isExp ? 'Exposed' : `${depth.toFixed(1)} ft`}</div></div>
+              <div className="meta-item"><div className="meta-label">Depth</div><div className="meta-value" style={{ color: isExp ? 'var(--waze-red)' : depth < 3 ? 'var(--waze-orange)' : 'var(--waze-green)' }}>{isExp ? 'Exposed' : `${depth.toFixed(1)} ft`}</div></div>
               {selectedHazard.reported_by && <div className="meta-item"><div className="meta-label">Reporter</div><div className="meta-value">{selectedHazard.reported_by}</div></div>}
             </div>
             <div className="detail-actions">
               <button className="btn btn-danger-outline" style={{ flex: 1 }}><IconFlag size={14} /> Confirm</button>
               <button className="btn btn-secondary" style={{ flex: 1 }}><IconCheck size={14} /> Cleared</button>
-              <button className="btn btn-secondary" style={{ flex: 1 }}><IconCamera size={14} /> Photo</button>
             </div>
           </>);
         })()}
@@ -510,36 +595,12 @@ export default function Home() {
 
       {/* Edit mode banner */}
       {editMode && (
-        <div style={{ position: 'absolute', top: 70, left: '50%', transform: 'translateX(-50%)', zIndex: 20, background: 'rgba(34,211,238,0.15)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: 'var(--radius-lg)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--accent-teal)', backdropFilter: 'blur(12px)' }}>
-          <span style={{ fontWeight: 600 }}>EDIT MODE</span> — drag pins to reposition
-          <button onClick={exportPOIs} style={{ background: 'rgba(34,211,238,0.2)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: 6, color: 'var(--accent-teal)', padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Copy coords</button>
-          <button onClick={() => setEditMode(false)} style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: 'var(--accent-red)', padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>Done</button>
+        <div className="edit-banner">
+          <span>EDIT MODE</span> — drag pins
+          <button onClick={exportPOIs} style={{ background: 'var(--waze-teal)', color: 'white' }}>Copy coords</button>
+          <button onClick={() => setEditMode(false)} style={{ background: 'var(--waze-red)', color: 'white' }}>Done</button>
         </div>
       )}
-
-      {/* ─── Bottom nav ─── */}
-      <div className="bottom-nav">
-        <button className={`bottom-nav-btn ${gpsActive ? 'active' : ''}`} onClick={() => {
-          if (gpsActive && !followMode) { setFollowMode(true); if (gpsPosition && map.current) map.current.flyTo({ center: [gpsPosition.lng, gpsPosition.lat], zoom: 15.5, duration: 800 }); }
-          else toggleGPS();
-        }}>
-          <IconGps size={22} /><span className="bottom-nav-label">{gpsActive ? (followMode ? 'Following' : 'Re-center') : 'GPS'}</span>
-        </button>
-        <button className={`bottom-nav-btn ${showFilters ? 'active' : ''}`} onClick={() => { setShowFilters(!showFilters); setSelectedPOI(null); setSelectedHazard(null); }}>
-          <IconLayers size={22} /><span className="bottom-nav-label">Filter</span>
-        </button>
-        <button className="bottom-nav-btn" onClick={() => { setCreatePinMode('poi'); setSelectedPOI(null); setSelectedHazard(null); setShowFilters(false); }}>
-          <IconPlus size={22} /><span className="bottom-nav-label">Add spot</span>
-        </button>
-        <button className="bottom-nav-btn" style={{ color: 'var(--accent-red)' }} onClick={() => { setCreatePinMode('hazard'); setSelectedPOI(null); setSelectedHazard(null); setShowFilters(false); }}>
-          <IconAlert size={22} /><span className="bottom-nav-label">Hazard</span>
-        </button>
-        {navTarget && (
-          <button className="bottom-nav-btn active" onClick={cancelNav}>
-            <IconNavigation size={22} /><span className="bottom-nav-label">End nav</span>
-          </button>
-        )}
-      </div>
     </div>
   );
 }

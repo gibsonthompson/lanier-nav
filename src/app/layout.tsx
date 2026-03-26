@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Lanier Nav — Lake Navigation',
-  description: 'Real-time lake navigation with depth maps, hazards, and water-based routing',
+  title: 'NaviLake — Explore. Navigate. Share.',
+  description: 'Real-time lake navigation for Lake Lanier. GPS routing, live water levels, 156 POIs, hazard alerts.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Lanier Nav',
+    title: 'NaviLake',
   },
 };
 
@@ -18,7 +18,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#0a0e17',
+  themeColor: '#0d3b66',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

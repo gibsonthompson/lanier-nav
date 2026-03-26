@@ -1,12 +1,12 @@
 {
-  "name": "Lanier Nav",
-  "short_name": "LanierNav",
-  "description": "Lake navigation with live depth, hazards, and water-based routing",
+  "name": "NaviLake",
+  "short_name": "NaviLake",
+  "description": "Explore. Navigate. Share. Real-time lake navigation for Lake Lanier.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0e17",
-  "theme_color": "#0a0e17",
+  "background_color": "#ffffff",
+  "theme_color": "#0d3b66",
   "icons": [
     {
       "src": "/icon-192.png",
