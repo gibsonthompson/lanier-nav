@@ -307,7 +307,12 @@ export default function Home() {
   const POIIcon = selectedPOI ? POI_ICONS[selectedPOI.type] : null;
   const HazardIcon = selectedHazard ? HAZARD_ICONS[selectedHazard.type] : null;
 
-  // Search filtering
+  // Search filtering — prioritize fuel & restaurants (what boaters need most)
+  const TYPE_PRIORITY: Record<string, number> = {
+    fuel: 0, restaurant: 1, marina: 2, boat_ramp: 3, beach: 4,
+    fishing: 5, campground: 6, park: 7, dock: 8, island: 9, rope_swing: 10,
+  };
+
   const filteredSearchPOIs = allPOIs.filter(p => {
     if (searchCategory && p.type !== searchCategory) return false;
     if (searchQuery) {
@@ -315,7 +320,27 @@ export default function Home() {
       return p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
     }
     return true;
-  }).slice(0, 30);
+  }).sort((a, b) => {
+    // When no query, sort by priority (fuel first, then restaurants, etc.)
+    if (!searchQuery && !searchCategory) {
+      return (TYPE_PRIORITY[a.type] ?? 99) - (TYPE_PRIORITY[b.type] ?? 99);
+    }
+    return 0;
+  }).slice(0, 40);
+
+  // Group by type for sectioned display when browsing (no query)
+  const searchSections: { type: string; label: string; color: string; pois: typeof filteredSearchPOIs }[] = [];
+  if (!searchQuery && !searchCategory) {
+    const grouped: Record<string, typeof filteredSearchPOIs> = {};
+    filteredSearchPOIs.forEach(p => {
+      if (!grouped[p.type]) grouped[p.type] = [];
+      grouped[p.type].push(p);
+    });
+    Object.entries(grouped).forEach(([type, pois]) => {
+      const cfg = (POI_CONFIG as Record<string, {label:string;color:string}>)[type];
+      if (cfg) searchSections.push({ type, label: cfg.label, color: cfg.color, pois });
+    });
+  }
 
   const boatSpeedMPH = gpsPosition?.speed ? gpsPosition.speed * 2.23694 : null;
 
@@ -418,11 +443,32 @@ export default function Home() {
 
       {/* ─── "Where to?" Bar (bottom, Waze search) ─── */}
       {!navTarget && !selectedPOI && !selectedHazard && !showFilters && !showCreateForm && !createPinMode && (
-        <div className="where-to-bar" onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
-          <div className="where-to-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <div style={{ position: 'absolute', bottom: `calc(16px + var(--sab))`, left: 12, right: 12, zIndex: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Quick access row */}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+            <button onClick={() => { setShowSearch(true); setSearchCategory('fuel'); setTimeout(() => searchInputRef.current?.focus(), 400); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 'var(--waze-radius-pill)', background: 'var(--waze-card)', border: 'none', boxShadow: 'var(--waze-shadow)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--waze-text-secondary)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="6" width="12" height="16" rx="1"/><path d="M15 10h2a2 2 0 012 2v4a2 2 0 002 2 2 2 0 002-2V9l-3-3"/></svg>
+              Fuel
+            </button>
+            <button onClick={() => { setShowSearch(true); setSearchCategory('restaurant'); setTimeout(() => searchInputRef.current?.focus(), 400); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 'var(--waze-radius-pill)', background: 'var(--waze-card)', border: 'none', boxShadow: 'var(--waze-shadow)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--waze-text-secondary)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>
+              Food
+            </button>
+            <button onClick={() => { setShowSearch(true); setSearchCategory('marina'); setTimeout(() => searchInputRef.current?.focus(), 400); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 'var(--waze-radius-pill)', background: 'var(--waze-card)', border: 'none', boxShadow: 'var(--waze-shadow)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--waze-text-secondary)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="22"/><path d="M5 12H2a10 10 0 0020 0h-3"/></svg>
+              Marinas
+            </button>
           </div>
-          <span className="where-to-text">Where to?</span>
+          {/* Where to bar */}
+          <div className="where-to-bar" onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
+            <div className="where-to-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+            <span className="where-to-text">Where to?</span>
+          </div>
         </div>
       )}
 
@@ -430,14 +476,16 @@ export default function Home() {
       <div className={`search-sheet ${showSearch ? 'open' : ''}`}>
         <div className="search-input-wrap">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input ref={searchInputRef} className="search-input" placeholder="Search marinas, ramps, restaurants..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          <input ref={searchInputRef} className="search-input" placeholder="Find fuel, food, marinas, ramps..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           <button onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchCategory(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--waze-text-muted)', padding: 4 }}>
             <IconX size={18} />
           </button>
         </div>
         <div className="search-category-chips">
-          {Object.entries(POI_CONFIG).map(([key, cfg]) => {
+          {['fuel', 'restaurant', 'marina', 'boat_ramp', 'beach', 'fishing', 'campground', 'park', 'dock', 'island'].map(key => {
+            const cfg = (POI_CONFIG as Record<string, {label:string;color:string}>)[key];
             const Icon = POI_ICONS[key];
+            if (!cfg) return null;
             return (
               <button key={key} className={`category-chip ${searchCategory === key ? 'active' : ''}`} onClick={() => setSearchCategory(searchCategory === key ? null : key)}>
                 {Icon && <Icon size={14} />} {cfg.label}
@@ -445,27 +493,63 @@ export default function Home() {
             );
           })}
         </div>
-        <div className="search-section-label">
-          {searchQuery ? `Results (${filteredSearchPOIs.length})` : searchCategory ? (POI_CONFIG as Record<string, {label:string;color:string}>)[searchCategory]?.label || 'All' : 'All locations'}
-        </div>
-        {filteredSearchPOIs.map((poi) => {
-          const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
-          return (
-            <div key={poi.id} className="search-result" onClick={() => {
-              setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
-              setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
-            }}>
-              <div className="search-result-icon" style={{ background: `${c.color}15` }}>
-                {Icon && <Icon size={20} color={c.color} />}
+
+        {/* Sectioned results when browsing, flat list when searching */}
+        {(searchQuery || searchCategory) ? (<>
+          <div className="search-section-label">
+            {searchQuery ? `Results (${filteredSearchPOIs.length})` : (POI_CONFIG as Record<string, {label:string;color:string}>)[searchCategory!]?.label || 'All'}
+          </div>
+          {filteredSearchPOIs.map((poi) => {
+            const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
+            return (
+              <div key={poi.id} className="search-result" onClick={() => {
+                setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
+                setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
+              }}>
+                <div className="search-result-icon" style={{ background: `${c.color}15` }}>
+                  {Icon && <Icon size={20} color={c.color} />}
+                </div>
+                <div className="search-result-info">
+                  <div className="search-result-name">{poi.name}</div>
+                  <div className="search-result-detail">{c.label}</div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
               </div>
-              <div className="search-result-info">
-                <div className="search-result-name">{poi.name}</div>
-                <div className="search-result-detail">{c.label}</div>
+            );
+          })}
+          {filteredSearchPOIs.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 24, color: 'var(--waze-text-muted)', fontSize: 13 }}>No results found</div>
+          )}
+        </>) : (<>
+          {searchSections.map((section) => {
+            const SectionIcon = POI_ICONS[section.type];
+            return (
+              <div key={section.type}>
+                <div className="search-section-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: section.color }}>
+                  {SectionIcon && <SectionIcon size={14} />} {section.label} <span style={{ color: 'var(--waze-text-muted)', fontWeight: 400 }}>({section.pois.length})</span>
+                </div>
+                {section.pois.map((poi) => {
+                  const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
+                  return (
+                    <div key={poi.id} className="search-result" onClick={() => {
+                      setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
+                      setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
+                    }}>
+                      <div className="search-result-icon" style={{ background: `${c.color}15` }}>
+                        {Icon && <Icon size={20} color={c.color} />}
+                      </div>
+                      <div className="search-result-info">
+                        <div className="search-result-name">{poi.name}</div>
+                        <div className="search-result-detail">{(poi.description || '').slice(0, 60)}{(poi.description || '').length > 60 ? '...' : ''}</div>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </div>
+                  );
+                })}
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
-          );
-        })}
+            );
+          })}
+        </>)}
       </div>
 
       {/* ─── Backdrop ─── */}

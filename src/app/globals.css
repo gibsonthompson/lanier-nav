@@ -47,7 +47,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 .hazard-marker-icon svg{transform:rotate(-45deg)}
 
 /* Speed Circle */
-.speed-circle{position:absolute;bottom:calc(90px + var(--sab));left:16px;z-index:15;width:64px;height:64px;border-radius:50%;background:var(--waze-card);border:3px solid var(--waze-border);box-shadow:var(--waze-shadow);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.speed-circle{position:absolute;bottom:calc(130px + var(--sab));left:16px;z-index:15;width:64px;height:64px;border-radius:50%;background:var(--waze-card);border:3px solid var(--waze-border);box-shadow:var(--waze-shadow);display:flex;flex-direction:column;align-items:center;justify-content:center}
 .speed-circle.active{border-color:var(--waze-teal)}
 .speed-value{font-size:22px;font-weight:800;color:var(--waze-text);line-height:1}
 .speed-unit{font-size:9px;font-weight:600;color:var(--waze-text-muted);text-transform:uppercase;letter-spacing:.5px}
@@ -61,7 +61,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 /* FABs */
 .fab-stack{position:absolute;right:12px;z-index:15;display:flex;flex-direction:column;gap:10px}
 .fab-stack.top{top:calc(12px + var(--sat))}
-.fab-stack.bottom{bottom:calc(90px + var(--sab))}
+.fab-stack.bottom{bottom:calc(130px + var(--sab))}
 .fab-btn{width:48px;height:48px;border-radius:50%;background:var(--waze-card);border:none;box-shadow:var(--waze-shadow);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--waze-text-secondary);transition:all .2s;font-family:var(--font)}
 .fab-btn:active{transform:scale(.92)}
 .fab-btn.active{background:var(--waze-blue);color:white;box-shadow:0 2px 12px rgba(13,59,102,0.4)}
