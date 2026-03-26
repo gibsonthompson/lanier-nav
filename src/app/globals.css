@@ -68,7 +68,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 .fab-btn.hazard{color:var(--waze-orange)}
 
 /* Where To Bar */
-.where-to-bar{position:absolute;bottom:calc(16px + var(--sab));left:12px;right:12px;z-index:16;background:var(--waze-card);border-radius:var(--waze-radius);box-shadow:var(--waze-shadow-lg);padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
+.where-to-bar{background:var(--waze-card);border-radius:var(--waze-radius);box-shadow:var(--waze-shadow-lg);padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
 .where-to-bar:active{transform:scale(.98)}
 .where-to-icon{width:36px;height:36px;border-radius:50%;background:var(--waze-teal);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .where-to-text{font-size:16px;font-weight:500;color:var(--waze-text-muted)}
@@ -85,7 +85,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 .search-result-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .search-result-info{flex:1;min-width:0}
 .search-result-name{font-size:14px;font-weight:600;color:var(--waze-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.search-result-detail{font-size:12px;color:var(--waze-text-muted);margin-top:1px}
+.search-result-detail{font-size:12px;color:var(--waze-text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .search-category-chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .search-category-chips::-webkit-scrollbar{display:none}
 .category-chip{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--waze-radius-pill);border:1.5px solid var(--waze-border);background:var(--waze-card);font-family:var(--font);font-size:12px;font-weight:500;color:var(--waze-text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -175,3 +175,47 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 /* Backdrop */
 .backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:19;opacity:0;pointer-events:none;transition:opacity .3s}
 .backdrop.open{opacity:1;pointer-events:auto}
+
+/* ─── Mobile optimizations ─── */
+.quick-pills{display:flex;gap:8px;justify-content:center;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
+.quick-pills::-webkit-scrollbar{display:none}
+.quick-pill{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--waze-radius-pill);background:var(--waze-card);border:none;box-shadow:var(--waze-shadow);cursor:pointer;font-family:var(--font);font-size:12px;font-weight:600;color:var(--waze-text-secondary);white-space:nowrap;flex-shrink:0;transition:transform .15s}
+.quick-pill:active{transform:scale(.95)}
+.bottom-bar-wrap{position:absolute;bottom:calc(16px + var(--sab));left:12px;right:12px;z-index:16;display:flex;flex-direction:column;gap:10px}
+
+@media(max-width:380px){
+  .quick-pill{padding:7px 12px;font-size:11px}
+  .quick-pill svg{width:14px;height:14px}
+  .where-to-bar{padding:12px 14px}
+  .where-to-text{font-size:14px}
+  .where-to-icon{width:32px;height:32px}
+  .speed-circle{width:56px;height:56px}
+  .speed-value{font-size:18px}
+  .fab-btn{width:42px;height:42px}
+  .water-badge{padding:6px 10px}
+  .search-result{padding:10px 6px}
+  .search-result-icon{width:36px;height:36px}
+  .search-result-name{font-size:13px}
+}
+
+@media(max-width:340px){
+  .quick-pill{padding:6px 10px;font-size:10px;gap:4px}
+  .bottom-bar-wrap{left:8px;right:8px}
+}
+
+/* Ensure search sheet covers enough on small screens */
+@media(max-height:700px){
+  .search-sheet{max-height:80vh}
+  .filter-sheet{max-height:70vh}
+}
+
+/* Landscape phone */
+@media(max-height:500px){
+  .search-sheet{max-height:90vh}
+  .nav-top-bar{padding:calc(8px + var(--sat)) 12px 10px}
+  .nav-bearing-circle{width:40px;height:40px}
+  .nav-bearing-deg{font-size:14px}
+  .nav-instruction-dest{font-size:15px}
+  .nav-bottom-bar{padding:10px 12px calc(10px + var(--sab))}
+  .nav-stat-value{font-size:18px}
+}

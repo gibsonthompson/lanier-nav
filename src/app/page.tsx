@@ -443,27 +443,28 @@ export default function Home() {
 
       {/* ─── "Where to?" Bar (bottom, Waze search) ─── */}
       {!navTarget && !selectedPOI && !selectedHazard && !showFilters && !showCreateForm && !createPinMode && (
-        <div style={{ position: 'absolute', bottom: `calc(16px + var(--sab))`, left: 12, right: 12, zIndex: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="bottom-bar-wrap">
           {/* Quick access row */}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-            <button onClick={() => { setShowSearch(true); setSearchCategory('fuel'); setTimeout(() => searchInputRef.current?.focus(), 400); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 'var(--waze-radius-pill)', background: 'var(--waze-card)', border: 'none', boxShadow: 'var(--waze-shadow)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--waze-text-secondary)' }}>
+          <div className="quick-pills">
+            <button className="quick-pill" onClick={() => { setShowSearch(true); setShowFilters(false); setSearchCategory('fuel'); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="6" width="12" height="16" rx="1"/><path d="M15 10h2a2 2 0 012 2v4a2 2 0 002 2 2 2 0 002-2V9l-3-3"/></svg>
               Fuel
             </button>
-            <button onClick={() => { setShowSearch(true); setSearchCategory('restaurant'); setTimeout(() => searchInputRef.current?.focus(), 400); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 'var(--waze-radius-pill)', background: 'var(--waze-card)', border: 'none', boxShadow: 'var(--waze-shadow)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--waze-text-secondary)' }}>
+            <button className="quick-pill" onClick={() => { setShowSearch(true); setShowFilters(false); setSearchCategory('restaurant'); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>
               Food
             </button>
-            <button onClick={() => { setShowSearch(true); setSearchCategory('marina'); setTimeout(() => searchInputRef.current?.focus(), 400); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 'var(--waze-radius-pill)', background: 'var(--waze-card)', border: 'none', boxShadow: 'var(--waze-shadow)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, color: 'var(--waze-text-secondary)' }}>
+            <button className="quick-pill" onClick={() => { setShowSearch(true); setShowFilters(false); setSearchCategory('marina'); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="22"/><path d="M5 12H2a10 10 0 0020 0h-3"/></svg>
               Marinas
             </button>
+            <button className="quick-pill" onClick={() => { setShowSearch(true); setShowFilters(false); setSearchCategory('boat_ramp'); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a9e96" strokeWidth="2.5" strokeLinecap="round"><path d="M2 21l3-3h4l3-9 3 9h4l3 3"/><path d="M12 3v6"/></svg>
+              Ramps
+            </button>
           </div>
           {/* Where to bar */}
-          <div className="where-to-bar" onClick={() => { setShowSearch(true); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
+          <div className="where-to-bar" onClick={() => { setShowSearch(true); setShowFilters(false); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
             <div className="where-to-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </div>

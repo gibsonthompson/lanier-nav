@@ -34,21 +34,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ data: photosWithUrls });
 }
 
-// POST /api/photos — upload a photo
+// POST /api/photos — upload a photo (open, no auth required)
 // Expects multipart FormData with: file, poi_id or hazard_id, caption (optional)
 export async function POST(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
-  const { data: { user }, error: authErr } = await supabase.auth.getUser(
-    authHeader.replace('Bearer ', '')
-  );
-  if (authErr || !user) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-  }
-
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
   const poi_id = formData.get('poi_id') as string | null;
@@ -73,9 +61,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 });
   }
 
-  // Upload to Supabase Storage
+  // Upload to Supabase Storage (anonymous folder)
   const ext = file.name.split('.').pop() || 'jpg';
-  const storagePath = `${user.id}/${Date.now()}.${ext}`;
+  const storagePath = `community/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   const { error: uploadErr } = await supabase.storage
     .from('photos')
@@ -88,13 +76,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Upload failed: ${uploadErr.message}` }, { status: 500 });
   }
 
-  // Create photo record
+  // Create photo record (user_id null for anonymous)
   const { data, error } = await supabase
     .from('photos')
     .insert({
       poi_id: poi_id || null,
       hazard_id: hazard_id || null,
-      user_id: user.id,
+      user_id: null,
       storage_path: storagePath,
       caption,
     })
