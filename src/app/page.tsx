@@ -105,7 +105,7 @@ export default function Home() {
   // Init map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
-    const m = new maplibregl.Map({ container: mapContainer.current, style: { version: 8, sources: { 'esri-sat': { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 19, attribution: 'Esri, Maxar, Earthstar Geographics' } }, layers: [{ id: 'satellite', type: 'raster', source: 'esri-sat' }] }, center: LANIER_CENTER, zoom: LANIER_ZOOM, minZoom: 10, maxZoom: 18, pitch: 0 });
+    const m = new maplibregl.Map({ container: mapContainer.current, style: { version: 8, sources: { 'google-sat': { type: 'raster', tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize: 256, maxzoom: 20, attribution: '&copy; Google' } }, layers: [{ id: 'satellite', type: 'raster', source: 'google-sat' }] }, center: LANIER_CENTER, zoom: LANIER_ZOOM, minZoom: 10, maxZoom: 19, pitch: 0 });
     m.on('load', () => {
       m.addSource('depth-zones', { type: 'geojson', data: DEPTH_GEOJSON });
       DEPTH_ZONES.forEach((zone) => {
