@@ -101,7 +101,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 .nav-instruction-dest{font-size:18px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nav-instruction-distance{font-size:13px;font-weight:500;opacity:.9;margin-top:2px}
 
-.nav-bottom-bar{position:absolute;bottom:0;left:0;right:0;z-index:18;background:var(--waze-card);padding:16px 16px calc(14px + var(--sab));box-shadow:0 -2px 16px rgba(0,0,0,0.08)}
+.nav-bottom-bar{position:absolute;bottom:0;left:0;right:0;z-index:18;background:var(--waze-card);padding:16px 16px calc(16px + var(--sab));box-shadow:0 -2px 16px rgba(0,0,0,0.08)}
 .nav-stats{display:flex;align-items:center;gap:4px;margin-bottom:14px}
 .nav-stat{flex:1;text-align:center}
 .nav-stat-value{font-size:24px;font-weight:800;color:var(--waze-text)}

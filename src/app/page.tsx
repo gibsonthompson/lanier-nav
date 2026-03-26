@@ -117,8 +117,8 @@ export default function Home() {
         m.addLayer({ id: `depth-${zone.id}-outline`, type: 'line', source: 'depth-zones', filter: ['==', ['get', 'zone'], zone.id], paint: { 'line-color': zone.color, 'line-width': 1.2, 'line-opacity': 0.5 } });
       });
       m.addSource('nav-route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} } });
-      m.addLayer({ id: 'nav-route-glow', type: 'line', source: 'nav-route', paint: { 'line-color': '#22d3ee', 'line-width': 10, 'line-opacity': 0.12, 'line-blur': 4 } });
-      m.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', paint: { 'line-color': '#22d3ee', 'line-width': 3, 'line-dasharray': [3, 2], 'line-opacity': 0.85 } });
+      m.addLayer({ id: 'nav-route-glow', type: 'line', source: 'nav-route', paint: { 'line-color': '#4285f4', 'line-width': 14, 'line-opacity': 0.25, 'line-blur': 6 } });
+      m.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', paint: { 'line-color': '#4285f4', 'line-width': 5, 'line-opacity': 0.9 } });
       setMapLoaded(true);
     });
     m.on('click', (e) => {
@@ -169,33 +169,67 @@ export default function Home() {
     }
   }, [gpsActive, followMode]);
 
-  // Apple Maps-style follow mode — smooth tracking
+  // Waze-style follow mode — smooth tracking, pitch when navigating
   useEffect(() => {
     if (!followMode || !gpsPosition || !map.current || !firstFixRef.current) return;
-    map.current.easeTo({ center: [gpsPosition.lng, gpsPosition.lat], duration: 800, easing: (t) => t * (2 - t) });
-  }, [gpsPosition, followMode]);
+    
+    if (navTarget) {
+      // DRIVING MODE: pitched, heading-up, tight zoom, smooth follow
+      const bearing = gpsPosition.heading ?? calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
+      map.current.easeTo({
+        center: [gpsPosition.lng, gpsPosition.lat],
+        zoom: 15.5,
+        pitch: 60,
+        bearing: bearing,
+        duration: 1000,
+        easing: (t) => t * (2 - t),
+      });
+    } else {
+      // TRACKING MODE: flat, north-up, medium zoom
+      map.current.easeTo({
+        center: [gpsPosition.lng, gpsPosition.lat],
+        duration: 800,
+        easing: (t) => t * (2 - t),
+      });
+    }
+  }, [gpsPosition, followMode, navTarget]);
 
-  // Navigate — uses water router
+  // Navigate — direct course routing
   const navigateTo = useCallback((t: NavWaypoint) => {
-    setNavTarget(t); setSelectedPOI(null); setSelectedHazard(null); setShowFilters(false);
-    // Compute water route from current position (or map center)
+    setNavTarget(t); setSelectedPOI(null); setSelectedHazard(null); setShowFilters(false); setShowSearch(false);
+    
+    // Enable GPS if not already active
+    if (!gpsActive) toggleGPS();
+    setFollowMode(true);
+
+    // Compute route from current position (or map center)
     const startLng = gpsPosition?.lng ?? map.current?.getCenter().lng ?? LANIER_CENTER[0];
     const startLat = gpsPosition?.lat ?? map.current?.getCenter().lat ?? LANIER_CENTER[1];
     const result = findWaterRoute(startLng, startLat, t.lng, t.lat, allHazards, currentLevel);
     setRouteResult(result);
-    // Draw the water route on map
+
+    // Draw the route on map
     if (map.current?.getSource('nav-route')) {
       (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({
         type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {}
       });
     }
-    // Fit map to route
-    if (map.current && result.path.length > 1) {
-      const bounds = new maplibregl.LngLatBounds();
-      result.path.forEach(([lng, lat]) => bounds.extend([lng, lat]));
-      map.current.fitBounds(bounds, { padding: { top: 120, bottom: 120, left: 40, right: 60 }, duration: 1000 });
+
+    // Enter driving view — pitched, bearing toward destination, tight zoom
+    if (map.current) {
+      const bearing = gpsPosition 
+        ? calcBearing(gpsPosition.lat, gpsPosition.lng, t.lat, t.lng)
+        : calcBearing(startLat, startLng, t.lat, t.lng);
+      
+      map.current.flyTo({
+        center: [gpsPosition?.lng ?? startLng, gpsPosition?.lat ?? startLat],
+        zoom: 15.5,
+        pitch: 60,
+        bearing: bearing,
+        duration: 1500,
+      });
     }
-  }, [gpsPosition, allHazards, currentLevel]);
+  }, [gpsPosition, allHazards, currentLevel, gpsActive, toggleGPS]);
 
   // Update nav info when GPS moves
   useEffect(() => {
@@ -210,12 +244,15 @@ export default function Home() {
       });
     }
     const brng = calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
-    const speedKn = gpsPosition.speed ? gpsPosition.speed * 1.94384 : 15;
+    // Use actual speed if moving fast enough (>5kn), otherwise assume 20kn cruising
+    const rawSpeedKn = gpsPosition.speed ? gpsPosition.speed * 1.94384 : 0;
+    const speedKn = rawSpeedKn > 5 ? rawSpeedKn : 20; // 20kn ≈ 23mph typical boat speed
     const etaMin = (result.distance_nm / speedKn) * 60;
+    const etaStr = etaMin < 1 ? '<1 min' : etaMin < 60 ? `${Math.round(etaMin)} min` : `${Math.floor(etaMin / 60)}h ${Math.round(etaMin % 60)}m`;
     setNavInfo({
       distance: result.distance_nm < 0.1 ? `${(result.distance_nm * 6076).toFixed(0)} ft` : `${result.distance_nm.toFixed(2)} nm`,
       bearing: `${brng.toFixed(0)}° ${bearingToCompass(brng)}`,
-      eta: etaMin < 1 ? '<1 min' : `${Math.round(etaMin)} min`,
+      eta: etaStr,
     });
   }, [gpsPosition, navTarget, allHazards, currentLevel]);
 
@@ -316,6 +353,10 @@ export default function Home() {
   const cancelNav = useCallback(() => {
     setNavTarget(null); setNavInfo(null); setRouteResult(null);
     if (map.current?.getSource('nav-route')) (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} });
+    // Reset view from driving mode back to flat
+    if (map.current) {
+      map.current.easeTo({ pitch: 0, bearing: 0, zoom: 13, duration: 800 });
+    }
   }, []);
 
   const levelDiff = waterLevel.below_full_pool_ft ?? (FULL_POOL - currentLevel);
@@ -407,7 +448,11 @@ export default function Home() {
           <div className="nav-actions">
             <button className="nav-btn-stop" onClick={cancelNav}>Stop</button>
             <button className="nav-btn-recenter" onClick={() => {
-              if (gpsPosition && map.current) { setFollowMode(true); map.current.flyTo({ center: [gpsPosition.lng, gpsPosition.lat], zoom: 15.5, duration: 800 }); }
+              if (gpsPosition && map.current && navTarget) {
+                setFollowMode(true);
+                const bearing = gpsPosition.heading ?? calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
+                map.current.flyTo({ center: [gpsPosition.lng, gpsPosition.lat], zoom: 15.5, pitch: 60, bearing, duration: 800 });
+              }
             }}>
               <IconGps size={22} />
             </button>
