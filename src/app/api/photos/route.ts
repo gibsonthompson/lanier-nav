@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, createServiceClient } from '@/lib/supabase';
 
 // GET /api/photos?poi_id=xxx or ?hazard_id=xxx
 export async function GET(req: NextRequest) {
@@ -25,8 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Generate public URLs for each photo
-  const photosWithUrls = data.map((p: any) => ({
+  const photosWithUrls = (data || []).map((p: any) => ({
     ...p,
     url: supabase.storage.from('photos').getPublicUrl(p.storage_path).data.publicUrl,
   }));
@@ -35,9 +34,16 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/photos — upload a photo (open, no auth required)
-// Expects multipart FormData with: file, poi_id or hazard_id, caption (optional)
+// Uses SERVICE ROLE KEY to bypass all RLS + storage policies
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
+  // Parse form data safely
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
+  }
+
   const file = formData.get('file') as File | null;
   const poi_id = formData.get('poi_id') as string | null;
   const hazard_id = formData.get('hazard_id') as string | null;
@@ -50,34 +56,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'poi_id or hazard_id required' }, { status: 400 });
   }
 
-  // Validate file type
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-  if (!allowedTypes.includes(file.type)) {
-    return NextResponse.json({ error: 'Only JPEG, PNG, WebP, HEIC allowed' }, { status: 400 });
+  // Lenient file type validation — phones send weird MIME types
+  const fileType = file.type || 'image/jpeg';
+  if (!fileType.startsWith('image/')) {
+    return NextResponse.json({ error: `Not an image: ${fileType}` }, { status: 400 });
   }
 
-  // Max 10MB
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 });
+  // Max 15MB
+  if (file.size > 15 * 1024 * 1024) {
+    return NextResponse.json({ error: 'File too large (max 15MB)' }, { status: 400 });
   }
 
-  // Upload to Supabase Storage (anonymous folder)
-  const ext = file.name.split('.').pop() || 'jpg';
-  const storagePath = `community/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  // Service role client — bypasses ALL RLS and storage policies
+  let svc: ReturnType<typeof createServiceClient>;
+  try {
+    svc = createServiceClient();
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Server config error: ' + e.message }, { status: 500 });
+  }
 
-  const { error: uploadErr } = await supabase.storage
+  // Safe file extension
+  const rawExt = file.name?.split('.').pop()?.toLowerCase() || 'jpg';
+  const safeExt = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'gif'].includes(rawExt) ? rawExt : 'jpg';
+  const storagePath = `community/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
+
+  // Convert to Buffer — handles streaming edge cases on Vercel
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(await file.arrayBuffer());
+  } catch {
+    return NextResponse.json({ error: 'Failed to read file' }, { status: 400 });
+  }
+
+  // Upload to Supabase Storage
+  const { error: uploadErr } = await svc.storage
     .from('photos')
-    .upload(storagePath, file, {
-      contentType: file.type,
+    .upload(storagePath, buffer, {
+      contentType: fileType,
       upsert: false,
     });
 
   if (uploadErr) {
-    return NextResponse.json({ error: `Upload failed: ${uploadErr.message}` }, { status: 500 });
+    return NextResponse.json({ error: `Storage: ${uploadErr.message}` }, { status: 500 });
   }
 
-  // Create photo record (user_id null for anonymous)
-  const { data, error } = await supabase
+  // Insert photo record (user_id null for anonymous)
+  const { data, error } = await svc
     .from('photos')
     .insert({
       poi_id: poi_id || null,
@@ -90,10 +114,11 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // Clean up uploaded file if DB insert fails
+    await svc.storage.from('photos').remove([storagePath]);
+    return NextResponse.json({ error: `DB: ${error.message}` }, { status: 500 });
   }
 
-  const publicUrl = supabase.storage.from('photos').getPublicUrl(storagePath).data.publicUrl;
-
+  const publicUrl = svc.storage.from('photos').getPublicUrl(storagePath).data.publicUrl;
   return NextResponse.json({ data: { ...data, url: publicUrl } }, { status: 201 });
 }

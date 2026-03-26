@@ -277,18 +277,36 @@ export default function Home() {
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedPOI) return;
+    if (!file) return;
+
+    // Determine what we're attaching the photo to
+    const poiId = selectedPOI?.id;
+    const hazardId = selectedHazard?.id;
+    if (!poiId && !hazardId) {
+      alert('Select a location first');
+      e.target.value = '';
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('poi_id', selectedPOI.id);
+      if (poiId) formData.append('poi_id', poiId);
+      if (hazardId) formData.append('hazard_id', hazardId);
+
       const res = await fetch('/api/photos', { method: 'POST', body: formData });
       const data = await res.json();
-      if (res.ok) alert('Photo uploaded!');
-      else alert(`Upload failed: ${data.error}`);
-    } catch { alert('Upload failed — check your connection'); }
+
+      if (res.ok) {
+        alert('Photo uploaded successfully!');
+      } else {
+        alert(`Upload failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      alert('Upload failed — check your connection and try again');
+    }
     e.target.value = '';
-  }, [selectedPOI]);
+  }, [selectedPOI, selectedHazard]);
 
   const exportPOIs = useCallback(() => {
     const data = allPOIs.map(p => `  { id: '${p.id}', name: '${p.name.replace(/'/g, "\\'")}', type: '${p.type}', lat: ${p.lat}, lng: ${p.lng} },`).join('\n');
@@ -326,7 +344,7 @@ export default function Home() {
       return (TYPE_PRIORITY[a.type] ?? 99) - (TYPE_PRIORITY[b.type] ?? 99);
     }
     return 0;
-  }).slice(0, 40);
+  }).slice(0, searchQuery ? 30 : 200);
 
   // Group by type for sectioned display when browsing (no query)
   const searchSections: { type: string; label: string; color: string; pois: typeof filteredSearchPOIs }[] = [];
@@ -336,9 +354,13 @@ export default function Home() {
       if (!grouped[p.type]) grouped[p.type] = [];
       grouped[p.type].push(p);
     });
-    Object.entries(grouped).forEach(([type, pois]) => {
-      const cfg = (POI_CONFIG as Record<string, {label:string;color:string}>)[type];
-      if (cfg) searchSections.push({ type, label: cfg.label, color: cfg.color, pois });
+    // Explicitly sort sections by priority — fuel first, restaurants second
+    const sectionOrder = ['fuel', 'restaurant', 'marina', 'boat_ramp', 'beach', 'fishing', 'campground', 'park', 'dock', 'island', 'rope_swing'];
+    sectionOrder.forEach(type => {
+      if (grouped[type]) {
+        const cfg = (POI_CONFIG as Record<string, {label:string;color:string}>)[type];
+        if (cfg) searchSections.push({ type, label: cfg.label, color: cfg.color, pois: grouped[type] });
+      }
     });
   }
 
@@ -670,13 +692,14 @@ export default function Home() {
             <div className="detail-actions">
               <button className="btn btn-danger-outline" style={{ flex: 1 }}><IconFlag size={14} /> Confirm</button>
               <button className="btn btn-secondary" style={{ flex: 1 }}><IconCheck size={14} /> Cleared</button>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => photoInputRef.current?.click()}><IconCamera size={14} /> Photo</button>
             </div>
           </>);
         })()}
       </div>
 
       {/* Hidden photo input */}
-      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handlePhotoUpload} />
+      <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
 
       {/* Edit mode banner */}
       {editMode && (
