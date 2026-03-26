@@ -1,8 +1,9 @@
 /**
- * Water Router — A* pathfinding on Lake Lanier's real navigable water
+ * Water Router — A* pathfinding on Lake Lanier's navigable water
  * 
- * Uses the actual lake boundary polygon (traced from 156 verified shoreline POIs)
- * to build a navigable grid. A* finds paths that stay on water and avoid land.
+ * Uses 8-zone lake boundary to classify water vs land.
+ * Coarse grid (300m cells) for fast pathfinding with smoothed output.
+ * Routes stay on water and go around peninsulas.
  */
 
 import type { Hazard } from '@/data/hazards';
@@ -16,14 +17,13 @@ export interface RouteResult {
   warnings: string[];
 }
 
-// Grid resolution: ~150m per cell (0.0015 degrees) — good balance of accuracy vs speed
-const GRID_RES = 0.0015;
-const HAZARD_BUFFER = 0.003; // ~300m buffer around hazards
+// Coarser grid = faster A* (300m per cell, ~10K total cells)
+const GRID_RES = 0.003;
+const HAZARD_BUFFER = 0.004;
 
-// Lake bounding box (from POI analysis)
 const BOUNDS = {
-  minLng: -84.120, maxLng: -83.765,
-  minLat: 34.148, maxLat: 34.400,
+  minLng: -84.125, maxLng: -83.760,
+  minLat: 34.145, maxLat: 34.405,
 };
 
 function haversineNM(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -35,159 +35,169 @@ function haversineNM(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Build navigable grid with water/land classification
-function buildGrid(hazards: Hazard[], waterLevel: number) {
+// Cache the navigable grid (doesn't change between routes)
+let cachedGrid: { nav: Uint8Array; rows: number; cols: number } | null = null;
+
+function getGrid(hazards: Hazard[], waterLevel: number) {
   const cols = Math.ceil((BOUNDS.maxLng - BOUNDS.minLng) / GRID_RES);
   const rows = Math.ceil((BOUNDS.maxLat - BOUNDS.minLat) / GRID_RES);
-  
-  // Create flat array for speed (row-major)
-  const navigable = new Uint8Array(rows * cols);
-  const cost = new Float32Array(rows * cols);
-  
+
+  if (cachedGrid && cachedGrid.rows === rows && cachedGrid.cols === cols) {
+    return cachedGrid;
+  }
+
+  const nav = new Uint8Array(rows * cols);
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const lng = BOUNDS.minLng + c * GRID_RES;
       const lat = BOUNDS.minLat + r * GRID_RES;
-      const idx = r * cols + c;
-      
-      if (isOnWater(lng, lat)) {
-        navigable[idx] = 1;
-        cost[idx] = 1.0;
-        
-        // Add hazard cost
-        for (const h of hazards) {
-          const dlng = lng - h.lng;
-          const dlat = lat - h.lat;
-          const dist = Math.sqrt(dlng * dlng + dlat * dlat);
-          if (dist < HAZARD_BUFFER) {
-            const depth = waterLevel - h.elevation_ft;
-            if (depth < 6) {
-              cost[idx] += (1 - dist / HAZARD_BUFFER) * 20;
-            }
-          }
-        }
+      // Check center + offsets for better coverage
+      if (isOnWater(lng, lat) || 
+          isOnWater(lng + GRID_RES * 0.3, lat) || 
+          isOnWater(lng - GRID_RES * 0.3, lat) ||
+          isOnWater(lng, lat + GRID_RES * 0.3) ||
+          isOnWater(lng, lat - GRID_RES * 0.3)) {
+        nav[r * cols + c] = 1;
       }
     }
   }
-  
-  return { navigable, cost, rows, cols };
+
+  cachedGrid = { nav, rows, cols };
+  return cachedGrid;
 }
 
-// A* pathfinding with binary heap priority queue
-function astar(
-  navigable: Uint8Array, cost: Float32Array,
-  rows: number, cols: number,
-  sr: number, sc: number, er: number, ec: number
-): number[] | null {
+// A* with proper binary heap
+function astar(nav: Uint8Array, rows: number, cols: number,
+  sr: number, sc: number, er: number, ec: number): number[] | null {
+
   const size = rows * cols;
   const g = new Float32Array(size).fill(Infinity);
   const parent = new Int32Array(size).fill(-1);
   const closed = new Uint8Array(size);
-  
-  const key = (r: number, c: number) => r * cols + c;
-  const startIdx = key(sr, sc);
-  const endIdx = key(er, ec);
-  
-  if (!navigable[startIdx] || !navigable[endIdx]) return null;
-  
-  g[startIdx] = 0;
-  
-  // Simple priority queue (heap would be faster but this works for our grid size)
-  const open: { idx: number; f: number }[] = [];
-  const heuristic = (r1: number, c1: number) => 
-    Math.sqrt((er - r1) ** 2 + (ec - c1) ** 2);
-  
-  open.push({ idx: startIdx, f: heuristic(sr, sc) });
-  
-  // 8-directional movement
-  const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-  const diagCost = 1.414;
-  
-  let iterations = 0;
-  const maxIter = Math.min(size, 50000); // Safety cap
-  
-  while (open.length > 0 && iterations++ < maxIter) {
-    // Find best (lowest f) — for small open sets this is fast enough
-    let bestI = 0;
-    for (let i = 1; i < open.length; i++) {
-      if (open[i].f < open[bestI].f) bestI = i;
+
+  const idx = (r: number, c: number) => r * cols + c;
+  const startI = idx(sr, sc);
+  const endI = idx(er, ec);
+
+  if (!nav[startI] || !nav[endI]) return null;
+
+  g[startI] = 0;
+
+  // Binary heap priority queue
+  const heap: number[] = [startI];
+  const fScore = new Float32Array(size).fill(Infinity);
+  fScore[startI] = Math.sqrt((er - sr) ** 2 + (ec - sc) ** 2);
+
+  function heapPush(i: number) {
+    heap.push(i);
+    let pos = heap.length - 1;
+    while (pos > 0) {
+      const parentPos = (pos - 1) >> 1;
+      if (fScore[heap[pos]] < fScore[heap[parentPos]]) {
+        [heap[pos], heap[parentPos]] = [heap[parentPos], heap[pos]];
+        pos = parentPos;
+      } else break;
     }
-    const cur = open[bestI];
-    open[bestI] = open[open.length - 1];
-    open.pop();
-    
-    if (cur.idx === endIdx) {
+  }
+
+  function heapPop(): number {
+    const top = heap[0];
+    const last = heap.pop()!;
+    if (heap.length > 0) {
+      heap[0] = last;
+      let pos = 0;
+      while (true) {
+        let smallest = pos;
+        const left = 2 * pos + 1, right = 2 * pos + 2;
+        if (left < heap.length && fScore[heap[left]] < fScore[heap[smallest]]) smallest = left;
+        if (right < heap.length && fScore[heap[right]] < fScore[heap[smallest]]) smallest = right;
+        if (smallest !== pos) {
+          [heap[pos], heap[smallest]] = [heap[smallest], heap[pos]];
+          pos = smallest;
+        } else break;
+      }
+    }
+    return top;
+  }
+
+  const dirs = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+
+  let iterations = 0;
+  while (heap.length > 0 && iterations++ < 200000) {
+    const curI = heapPop();
+
+    if (curI === endI) {
       // Reconstruct path
       const path: number[] = [];
-      let node = endIdx;
+      let node = endI;
       while (node !== -1) { path.push(node); node = parent[node]; }
       return path.reverse();
     }
-    
-    if (closed[cur.idx]) continue;
-    closed[cur.idx] = 1;
-    
-    const cr = Math.floor(cur.idx / cols);
-    const cc = cur.idx % cols;
-    
+
+    if (closed[curI]) continue;
+    closed[curI] = 1;
+
+    const cr = Math.floor(curI / cols);
+    const cc = curI % cols;
+
     for (const [dr, dc] of dirs) {
       const nr = cr + dr, nc = cc + dc;
       if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      const nIdx = key(nr, nc);
-      if (closed[nIdx] || !navigable[nIdx]) continue;
-      
-      const moveCost = (dr !== 0 && dc !== 0) ? diagCost : 1.0;
-      const newG = g[cur.idx] + moveCost * cost[nIdx];
-      
-      if (newG < g[nIdx]) {
-        g[nIdx] = newG;
-        parent[nIdx] = cur.idx;
-        open.push({ idx: nIdx, f: newG + heuristic(nr, nc) });
+      const nI = idx(nr, nc);
+      if (closed[nI] || !nav[nI]) continue;
+
+      const moveCost = (dr !== 0 && dc !== 0) ? 1.414 : 1.0;
+      const newG = g[curI] + moveCost;
+
+      if (newG < g[nI]) {
+        g[nI] = newG;
+        parent[nI] = curI;
+        const h = Math.sqrt((er - nr) ** 2 + (ec - nc) ** 2);
+        fScore[nI] = newG + h;
+        heapPush(nI);
       }
     }
   }
-  
-  return null; // No path found
+
+  return null;
 }
 
-// Douglas-Peucker path smoothing
-function smooth(points: [number, number][], epsilon: number): [number, number][] {
-  if (points.length <= 2) return points;
-  let maxDist = 0, maxIdx = 0;
-  const [sx, sy] = points[0], [ex, ey] = points[points.length - 1];
-  const len = Math.sqrt((ex-sx)**2 + (ey-sy)**2);
-  
-  for (let i = 1; i < points.length - 1; i++) {
-    const [px, py] = points[i];
-    const dist = len === 0 
-      ? Math.sqrt((px-sx)**2 + (py-sy)**2)
-      : Math.abs((ey-sy)*px - (ex-sx)*py + ex*sy - ey*sx) / len;
-    if (dist > maxDist) { maxDist = dist; maxIdx = i; }
+// Douglas-Peucker smoothing
+function smooth(pts: [number, number][], eps: number): [number, number][] {
+  if (pts.length <= 2) return pts;
+  let maxD = 0, maxI = 0;
+  const [sx, sy] = pts[0], [ex, ey] = pts[pts.length - 1];
+  const len = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i];
+    const d = len === 0
+      ? Math.sqrt((px - sx) ** 2 + (py - sy) ** 2)
+      : Math.abs((ey - sy) * px - (ex - sx) * py + ex * sy - ey * sx) / len;
+    if (d > maxD) { maxD = d; maxI = i; }
   }
-  
-  if (maxDist > epsilon) {
-    const left = smooth(points.slice(0, maxIdx + 1), epsilon);
-    const right = smooth(points.slice(maxIdx), epsilon);
+  if (maxD > eps) {
+    const left = smooth(pts.slice(0, maxI + 1), eps);
+    const right = smooth(pts.slice(maxI), eps);
     return [...left.slice(0, -1), ...right];
   }
-  return [points[0], points[points.length - 1]];
+  return [pts[0], pts[pts.length - 1]];
 }
 
-// Find nearest navigable cell to a given position
-function findNearest(navigable: Uint8Array, rows: number, cols: number, r: number, c: number): [number, number] {
-  if (r >= 0 && r < rows && c >= 0 && c < cols && navigable[r * cols + c]) return [r, c];
-  for (let radius = 1; radius < 30; radius++) {
+function findNearest(nav: Uint8Array, rows: number, cols: number, r: number, c: number): [number, number] {
+  const clampR = Math.max(0, Math.min(r, rows - 1));
+  const clampC = Math.max(0, Math.min(c, cols - 1));
+  if (nav[clampR * cols + clampC]) return [clampR, clampC];
+  for (let radius = 1; radius < 50; radius++) {
     for (let dr = -radius; dr <= radius; dr++) {
       for (let dc = -radius; dc <= radius; dc++) {
-        if (Math.abs(dr) !== radius && Math.abs(dc) !== radius) continue; // Only check perimeter
-        const nr = r + dr, nc = c + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && navigable[nr * cols + nc]) {
-          return [nr, nc];
-        }
+        if (Math.abs(dr) !== radius && Math.abs(dc) !== radius) continue;
+        const nr = clampR + dr, nc = clampC + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && nav[nr * cols + nc]) return [nr, nc];
       }
     }
   }
-  return [r, c];
+  return [clampR, clampC];
 }
 
 export function findWaterRoute(
@@ -196,83 +206,50 @@ export function findWaterRoute(
   hazards: Hazard[], currentWaterLevel: number
 ): RouteResult {
   const warnings: string[] = [];
-  
-  // Build navigable grid
-  const { navigable, cost, rows, cols } = buildGrid(hazards, currentWaterLevel);
-  
-  // Convert coordinates to grid cells
+  const { nav, rows, cols } = getGrid(hazards, currentWaterLevel);
+
   const toGrid = (lng: number, lat: number): [number, number] => [
     Math.round((lat - BOUNDS.minLat) / GRID_RES),
     Math.round((lng - BOUNDS.minLng) / GRID_RES),
   ];
-  
-  let [sr, sc] = toGrid(startLng, startLat);
-  let [er, ec] = toGrid(endLng, endLat);
-  
-  // Clamp to grid
-  sr = Math.max(0, Math.min(sr, rows - 1));
-  sc = Math.max(0, Math.min(sc, cols - 1));
-  er = Math.max(0, Math.min(er, rows - 1));
-  ec = Math.max(0, Math.min(ec, cols - 1));
-  
-  // Find nearest navigable cells
-  [sr, sc] = findNearest(navigable, rows, cols, sr, sc);
-  [er, ec] = findNearest(navigable, rows, cols, er, ec);
-  
-  // Run A*
-  const pathIndices = astar(navigable, cost, rows, cols, sr, sc, er, ec);
-  
+
+  let [sr, sc] = findNearest(nav, rows, cols, ...toGrid(startLng, startLat));
+  let [er, ec] = findNearest(nav, rows, cols, ...toGrid(endLng, endLat));
+
+  const pathIndices = astar(nav, rows, cols, sr, sc, er, ec);
+
   if (!pathIndices) {
-    // Fallback: direct line (better than nothing)
     warnings.push('No water route found — showing direct course');
-    const dist = haversineNM(startLat, startLng, endLat, endLng);
     return {
       path: [[startLng, startLat], [endLng, endLat]],
-      distance_nm: dist, hazards_nearby: 0, min_depth_ft: 0, warnings,
+      distance_nm: haversineNM(startLat, startLng, endLat, endLng),
+      hazards_nearby: 0, min_depth_ft: 0, warnings,
     };
   }
-  
-  // Convert grid path back to coordinates
-  const rawPath: [number, number][] = pathIndices.map(idx => {
-    const r = Math.floor(idx / cols);
-    const c = idx % cols;
-    return [BOUNDS.minLng + c * GRID_RES, BOUNDS.minLat + r * GRID_RES] as [number, number];
-  });
-  
-  // Smooth the path
-  const smoothed = smooth(rawPath, GRID_RES * 0.6);
-  
-  // Pin start/end to exact coordinates
+
+  const rawPath: [number, number][] = pathIndices.map(i => [
+    BOUNDS.minLng + (i % cols) * GRID_RES,
+    BOUNDS.minLat + Math.floor(i / cols) * GRID_RES,
+  ]);
+
+  const smoothed = smooth(rawPath, GRID_RES * 0.5);
   smoothed[0] = [startLng, startLat];
   smoothed[smoothed.length - 1] = [endLng, endLat];
-  
-  // Calculate distance
+
   let totalDist = 0;
   for (let i = 1; i < smoothed.length; i++) {
-    totalDist += haversineNM(smoothed[i-1][1], smoothed[i-1][0], smoothed[i][1], smoothed[i][0]);
+    totalDist += haversineNM(smoothed[i - 1][1], smoothed[i - 1][0], smoothed[i][1], smoothed[i][0]);
   }
-  
-  // Count hazards near route
+
   let hazardsNear = 0;
   for (const h of hazards) {
-    const depth = currentWaterLevel - h.elevation_ft;
-    if (depth < 6) {
+    if (currentWaterLevel - h.elevation_ft < 6) {
       for (const [lng, lat] of smoothed) {
-        const d = Math.sqrt((lng - h.lng)**2 + (lat - h.lat)**2);
-        if (d < HAZARD_BUFFER) { hazardsNear++; break; }
+        if (Math.sqrt((lng - h.lng) ** 2 + (lat - h.lat) ** 2) < HAZARD_BUFFER) { hazardsNear++; break; }
       }
     }
   }
-  
-  if (hazardsNear > 0) {
-    warnings.push(`${hazardsNear} hazard${hazardsNear > 1 ? 's' : ''} near route — proceed with caution`);
-  }
-  
-  return {
-    path: smoothed,
-    distance_nm: totalDist,
-    hazards_nearby: hazardsNear,
-    min_depth_ft: 0,
-    warnings,
-  };
+  if (hazardsNear > 0) warnings.push(`${hazardsNear} hazard${hazardsNear > 1 ? 's' : ''} near route`);
+
+  return { path: smoothed, distance_nm: totalDist, hazards_nearby: hazardsNear, min_depth_ft: 0, warnings };
 }
