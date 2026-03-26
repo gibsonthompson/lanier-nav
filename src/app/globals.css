@@ -54,7 +54,7 @@ html, body { height: 100%; width: 100%; overflow: hidden; font-family: var(--fon
   padding: calc(12px + var(--sat)) 16px 12px;
   padding-left: calc(16px + var(--sal));
   padding-right: calc(16px + var(--sar));
-  background: linear-gradient(to bottom, rgba(10,14,23,0.95) 0%, rgba(10,14,23,0.75) 70%, transparent 100%);
+  background: linear-gradient(to bottom, rgba(10,14,23,0.92) 0%, rgba(10,14,23,0.80) 80%, transparent 100%);
   pointer-events: none;
 }
 .top-bar > * { pointer-events: auto; }
@@ -224,17 +224,17 @@ html, body { height: 100%; width: 100%; overflow: hidden; font-family: var(--fon
 .map-marker:hover { transform: scale(1.12); }
 
 .marker-icon {
-  width: 32px; height: 32px; border-radius: 50%;
+  width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid rgba(255,255,255,0.25);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  border: 2.5px solid rgba(255,255,255,0.85);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.3);
 }
 
 .hazard-marker-icon {
-  width: 26px; height: 26px; border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid rgba(255,255,255,0.2);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  border: 2.5px solid rgba(255,255,255,0.7);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2);
 }
 
 /* ─── GPS marker ─── */

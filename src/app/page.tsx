@@ -67,7 +67,7 @@ export default function Home() {
   const createPinModeRef = useRef<CreatePinMode>(null);
 
   const [poiFilters, setPoiFilters] = useState<Record<string, boolean>>(() => {
-    const f: Record<string, boolean> = { hazards: true, depth: true };
+    const f: Record<string, boolean> = { hazards: true, depth: false };
     Object.keys(POI_CONFIG).forEach(k => f[k] = true);
     return f;
   });
@@ -450,11 +450,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── Depth legend ─── */}
-      <div className={`depth-legend ${poiFilters.depth ? '' : 'hidden'}`}>
-        <div className="depth-legend-title">Depth at {currentLevel.toFixed(1)} ft</div>
-        {DEPTH_ZONES.map((z) => <div key={z.id} className="depth-legend-item"><div className="depth-legend-swatch" style={{ background: z.color, opacity: z.opacity + 0.3 }} /><div className="depth-legend-label">{z.label}</div></div>)}
-      </div>
+      {/* ─── Depth legend removed — no real bathymetric data yet ─── */}
 
       {/* ─── POI detail ─── */}
       <div className={`detail-overlay ${selectedPOI && !showCreateForm ? 'open' : ''}`}>
