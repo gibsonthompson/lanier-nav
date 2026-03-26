@@ -1,24 +1,26 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-// These are public — safe to expose in the browser.
-// Set them in .env.local:
-//   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-//   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-//   SUPABASE_SERVICE_ROLE_KEY=eyJ... (server-only, never expose)
+// Lazy-initialized — never runs at build time
+let _supabase: SupabaseClient | null = null;
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase env vars not set — running in offline/seed mode');
+export function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) throw new Error('Supabase env vars not set');
+    _supabase = createClient(url, key);
+  }
+  return _supabase;
 }
 
-// Browser client (uses anon key, respects RLS)
-export const supabase = createClient(supabaseUrl || 'http://localhost', supabaseAnonKey || 'placeholder');
+// For backwards compat — same as getSupabase() but accessed as property
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_, prop) { return (getSupabase() as any)[prop]; },
+});
 
-// Server client (uses service role key, bypasses RLS — only use in API routes)
-export function createServiceClient() {
+export function createServiceClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY not set');
-  return createClient(supabaseUrl, serviceKey);
+  if (!url || !serviceKey) throw new Error('Supabase env vars not set (need URL + service role key)');
+  return createClient(url, serviceKey);
 }
