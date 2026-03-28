@@ -109,7 +109,7 @@ export default function Home() {
   // Init map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
-    const m = new maplibregl.Map({ container: mapContainer.current, style: { version: 8, sources: { 'google-sat': { type: 'raster', tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize: 256, maxzoom: 20, attribution: '&copy; Google' } }, layers: [{ id: 'satellite', type: 'raster', source: 'google-sat' }] }, center: LANIER_CENTER, zoom: LANIER_ZOOM, minZoom: 10, maxZoom: 19, pitch: 0 });
+    const m = new maplibregl.Map({ container: mapContainer.current, style: { version: 8, sources: { 'google-sat': { type: 'raster', tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize: 256, maxzoom: 20, attribution: '&copy; Google' } }, layers: [{ id: 'satellite', type: 'raster', source: 'google-sat' }] }, center: LANIER_CENTER, zoom: LANIER_ZOOM, minZoom: 10, maxZoom: 19, maxPitch: 75, pitch: 0 });
     m.on('load', () => {
       m.addSource('depth-zones', { type: 'geojson', data: DEPTH_GEOJSON });
       DEPTH_ZONES.forEach((zone) => {
@@ -117,8 +117,8 @@ export default function Home() {
         m.addLayer({ id: `depth-${zone.id}-outline`, type: 'line', source: 'depth-zones', filter: ['==', ['get', 'zone'], zone.id], paint: { 'line-color': zone.color, 'line-width': 1.2, 'line-opacity': 0.5 } });
       });
       m.addSource('nav-route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} } });
-      m.addLayer({ id: 'nav-route-glow', type: 'line', source: 'nav-route', paint: { 'line-color': '#4285f4', 'line-width': 14, 'line-opacity': 0.25, 'line-blur': 6 } });
-      m.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', paint: { 'line-color': '#4285f4', 'line-width': 5, 'line-opacity': 0.9 } });
+      m.addLayer({ id: 'nav-route-glow', type: 'line', source: 'nav-route', paint: { 'line-color': '#4285f4', 'line-width': 18, 'line-opacity': 0.3, 'line-blur': 8 } });
+      m.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', paint: { 'line-color': '#4285f4', 'line-width': 6, 'line-opacity': 0.95 } });
       setMapLoaded(true);
     });
     m.on('click', (e) => {
@@ -174,14 +174,22 @@ export default function Home() {
     if (!followMode || !gpsPosition || !map.current || !firstFixRef.current) return;
     
     if (navTarget) {
-      // DRIVING MODE: pitched, heading-up, tight zoom, smooth follow
+      // WAZE DRIVING MODE: high pitch, heading-up, forward offset so you see more ahead
       const bearing = gpsPosition.heading ?? calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
+      
+      // Offset camera center BEHIND the GPS position so the boat appears in the lower third
+      // and you see more of the route ahead (like Waze does)
+      const offsetDist = 0.0015; // ~150m behind
+      const bearingRad = (bearing * Math.PI) / 180;
+      const offsetLng = gpsPosition.lng - Math.sin(bearingRad) * offsetDist;
+      const offsetLat = gpsPosition.lat - Math.cos(bearingRad) * offsetDist;
+      
       map.current.easeTo({
-        center: [gpsPosition.lng, gpsPosition.lat],
-        zoom: 15.5,
-        pitch: 60,
+        center: [offsetLng, offsetLat],
+        zoom: 16,
+        pitch: 65,
         bearing: bearing,
-        duration: 1000,
+        duration: 1200,
         easing: (t) => t * (2 - t),
       });
     } else {
@@ -215,16 +223,21 @@ export default function Home() {
       });
     }
 
-    // Enter driving view — pitched, bearing toward destination, tight zoom
+    // Enter Waze driving view — high pitch, bearing toward destination, tight zoom
     if (map.current) {
       const bearing = gpsPosition 
         ? calcBearing(gpsPosition.lat, gpsPosition.lng, t.lat, t.lng)
         : calcBearing(startLat, startLng, t.lat, t.lng);
       
+      const pos = gpsPosition ?? { lng: startLng, lat: startLat };
+      const bearingRad = (bearing * Math.PI) / 180;
+      const offsetLng = pos.lng - Math.sin(bearingRad) * 0.0015;
+      const offsetLat = pos.lat - Math.cos(bearingRad) * 0.0015;
+      
       map.current.flyTo({
-        center: [gpsPosition?.lng ?? startLng, gpsPosition?.lat ?? startLat],
-        zoom: 15.5,
-        pitch: 60,
+        center: [offsetLng, offsetLat],
+        zoom: 16,
+        pitch: 65,
         bearing: bearing,
         duration: 1500,
       });
@@ -451,7 +464,11 @@ export default function Home() {
               if (gpsPosition && map.current && navTarget) {
                 setFollowMode(true);
                 const bearing = gpsPosition.heading ?? calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
-                map.current.flyTo({ center: [gpsPosition.lng, gpsPosition.lat], zoom: 15.5, pitch: 60, bearing, duration: 800 });
+                const bearingRad = (bearing * Math.PI) / 180;
+                map.current.flyTo({
+                  center: [gpsPosition.lng - Math.sin(bearingRad) * 0.0015, gpsPosition.lat - Math.cos(bearingRad) * 0.0015],
+                  zoom: 16, pitch: 65, bearing, duration: 800
+                });
               }
             }}>
               <IconGps size={22} />

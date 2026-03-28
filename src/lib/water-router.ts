@@ -17,8 +17,8 @@ export interface RouteResult {
   warnings: string[];
 }
 
-// Coarser grid = faster A* (300m per cell, ~10K total cells)
-const GRID_RES = 0.003;
+// Finer grid = more accurate routes (200m per cell, ~14K cells)
+const GRID_RES = 0.002;
 const HAZARD_BUFFER = 0.004;
 
 const BOUNDS = {
