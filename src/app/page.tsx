@@ -153,7 +153,7 @@ export default function Home() {
             if (!gpsMarkerRef.current) {
               const el = document.createElement('div'); el.className = 'gps-marker';
               el.innerHTML = '<div class="gps-dot"><div class="gps-heading"></div></div><div class="gps-ring"></div>';
-              gpsMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map.current);
+              gpsMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map.current);
             } else { gpsMarkerRef.current.setLngLat([lng, lat]); }
             if (heading !== null) { const h = gpsMarkerRef.current.getElement().querySelector('.gps-heading') as HTMLElement; if (h) h.style.transform = `rotate(${heading}deg)`; }
             // Apple Maps-style: first fix zooms in tight, then follows
@@ -275,12 +275,12 @@ export default function Home() {
     markersRef.current.forEach((m) => m.remove()); markersRef.current = [];
     if (true) {
       allPOIs.forEach((poi) => {
-        if (!poiFilters[poi.type]) return; // skip filtered-out types
+        if (!poiFilters[poi.type]) return;
         const c = POI_CONFIG[poi.type]; const svg = MARKER_SVG[poi.type] || '';
         const el = document.createElement('div'); el.className = 'map-marker';
         el.innerHTML = `<div class="marker-icon" style="background:${c.color}${editMode ? ';box-shadow:0 0 8px rgba(34,211,238,0.6)' : ''}">${svg}</div>`;
         el.addEventListener('click', (e) => { e.stopPropagation(); setSelectedPOI(poi); setSelectedHazard(null); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14, duration: 800 }); });
-        const marker = new maplibregl.Marker({ element: el, draggable: editMode }).setLngLat([poi.lng, poi.lat]).addTo(map.current!);
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center', draggable: editMode }).setLngLat([poi.lng, poi.lat]).addTo(map.current!);
         if (editMode) {
           marker.on('dragend', () => {
             const lngLat = marker.getLngLat();
@@ -297,13 +297,13 @@ export default function Home() {
         const el = document.createElement('div'); el.className = 'map-marker';
         el.innerHTML = `<div class="hazard-marker-icon" style="background:${bg}">${svg}</div>`;
         el.addEventListener('click', (e) => { e.stopPropagation(); setSelectedHazard(h); setSelectedPOI(null); map.current?.flyTo({ center: [h.lng, h.lat], zoom: 15, duration: 800 }); });
-        markersRef.current.push(new maplibregl.Marker({ element: el }).setLngLat([h.lng, h.lat]).addTo(map.current!));
+        markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([h.lng, h.lat]).addTo(map.current!));
       });
     }
     if (navTarget) {
       const el = document.createElement('div');
       el.innerHTML = '<div style="width:20px;height:20px;border-radius:50%;background:#22d3ee;border:3px solid #fff;box-shadow:0 0 12px rgba(34,211,238,0.5)"></div>';
-      markersRef.current.push(new maplibregl.Marker({ element: el }).setLngLat([navTarget.lng, navTarget.lat]).addTo(map.current!));
+      markersRef.current.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([navTarget.lng, navTarget.lat]).addTo(map.current!));
     }
   }, [mapLoaded, poiFilters, allPOIs, allHazards, currentLevel, navTarget, editMode]);
 
