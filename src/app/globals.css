@@ -76,9 +76,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 .where-to-icon{width:36px;height:36px;border-radius:50%;background:var(--waze-teal);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .where-to-text{font-size:16px;font-weight:500;color:var(--waze-text-muted)}
 
-/* Search Sheet — top-anchored so iOS keyboard doesn't cover results */
-.search-sheet{position:absolute;top:0;left:0;right:0;bottom:0;z-index:25;background:var(--waze-card);padding:calc(12px + var(--sat)) 16px calc(16px + var(--sab));transform:translateY(-100%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
-.search-sheet.open{transform:translateY(0)}
+/* Search Sheet — fixed fullscreen, fades in, input at top, keyboard-safe */
+.search-sheet{position:fixed;top:0;left:0;right:0;bottom:0;z-index:25;background:var(--waze-card);padding:calc(12px + var(--sat)) 16px calc(16px + var(--sab));opacity:0;visibility:hidden;transition:opacity .25s ease,visibility .25s ease;display:flex;flex-direction:column}
+.search-sheet.open{opacity:1;visibility:visible}
 .search-sheet .search-input-wrap{flex-shrink:0}
 .search-sheet .search-category-chips{flex-shrink:0}
 .search-input-wrap{display:flex;align-items:center;gap:10px;background:var(--waze-bg);border-radius:var(--waze-radius-sm);padding:12px 14px;margin-bottom:12px}
