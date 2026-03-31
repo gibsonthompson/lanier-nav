@@ -27,7 +27,7 @@ const MARKER_SVG: Record<string, string> = {
   island: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 3c-1 4-4 6-4 10a4 4 0 008 0c0-4-3-6-4-10z"/><path d="M4 20c3-1 6-1 8-1s5 0 8 1"/></svg>',
   fishing: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M18 2l-2 8h4l-2-8z"/><path d="M18 10v8a4 4 0 01-8 0"/><circle cx="10" cy="20" r="2"/></svg>',
   fuel: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="6" width="12" height="16" rx="1"/><path d="M15 10h2a2 2 0 012 2v4a2 2 0 002 2 2 2 0 002-2V9l-3-3"/></svg>',
-  restaurant: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>',
+  restaurant: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>',
   submerged_tree: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 22V8"/><path d="M5 12l7-8 7 8"/></svg>',
   rock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polygon points="2 18 6 10 10 14 14 6 18 10 22 18 2 18"/></svg>',
   shallow: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>',
@@ -135,8 +135,6 @@ export default function Home() {
   const toggleGPS = useCallback(() => {
     if (gpsActive) {
       if (followMode) {
-        // If already tracking but not following, re-enable follow
-        // If already following, turn GPS off entirely
         if (!followMode) { setFollowMode(true); return; }
       }
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
@@ -156,7 +154,6 @@ export default function Home() {
               gpsMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map.current);
             } else { gpsMarkerRef.current.setLngLat([lng, lat]); }
             if (heading !== null) { const h = gpsMarkerRef.current.getElement().querySelector('.gps-heading') as HTMLElement; if (h) h.style.transform = `rotate(${heading}deg)`; }
-            // Apple Maps-style: first fix zooms in tight, then follows
             if (!firstFixRef.current) {
               firstFixRef.current = true;
               map.current.flyTo({ center: [lng, lat], zoom: 15.5, duration: 1200 });
@@ -169,97 +166,53 @@ export default function Home() {
     }
   }, [gpsActive, followMode]);
 
-  // Waze-style follow mode — smooth tracking, pitch when navigating
+  // Waze-style follow mode
   useEffect(() => {
     if (!followMode || !gpsPosition || !map.current || !firstFixRef.current) return;
-    
     if (navTarget) {
-      // WAZE DRIVING MODE: high pitch, heading-up, forward offset so you see more ahead
       const bearing = gpsPosition.heading ?? calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
-      
-      // Offset camera center BEHIND the GPS position so the boat appears in the lower third
-      // and you see more of the route ahead (like Waze does)
-      const offsetDist = 0.0015; // ~150m behind
+      const offsetDist = 0.0015;
       const bearingRad = (bearing * Math.PI) / 180;
       const offsetLng = gpsPosition.lng - Math.sin(bearingRad) * offsetDist;
       const offsetLat = gpsPosition.lat - Math.cos(bearingRad) * offsetDist;
-      
-      map.current.easeTo({
-        center: [offsetLng, offsetLat],
-        zoom: 16,
-        pitch: 65,
-        bearing: bearing,
-        duration: 1200,
-        easing: (t) => t * (2 - t),
-      });
+      map.current.easeTo({ center: [offsetLng, offsetLat], zoom: 16, pitch: 65, bearing: bearing, duration: 1200, easing: (t) => t * (2 - t) });
     } else {
-      // TRACKING MODE: flat, north-up, medium zoom
-      map.current.easeTo({
-        center: [gpsPosition.lng, gpsPosition.lat],
-        duration: 800,
-        easing: (t) => t * (2 - t),
-      });
+      map.current.easeTo({ center: [gpsPosition.lng, gpsPosition.lat], duration: 800, easing: (t) => t * (2 - t) });
     }
   }, [gpsPosition, followMode, navTarget]);
 
-  // Navigate — direct course routing
+  // Navigate
   const navigateTo = useCallback((t: NavWaypoint) => {
     setNavTarget(t); setSelectedPOI(null); setSelectedHazard(null); setShowFilters(false); setShowSearch(false);
-    
-    // Enable GPS if not already active
     if (!gpsActive) toggleGPS();
     setFollowMode(true);
-
-    // Compute route from current position (or map center)
     const startLng = gpsPosition?.lng ?? map.current?.getCenter().lng ?? LANIER_CENTER[0];
     const startLat = gpsPosition?.lat ?? map.current?.getCenter().lat ?? LANIER_CENTER[1];
     const result = findWaterRoute(startLng, startLat, t.lng, t.lat, allHazards, currentLevel);
     setRouteResult(result);
-
-    // Draw the route on map
     if (map.current?.getSource('nav-route')) {
-      (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({
-        type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {}
-      });
+      (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {} });
     }
-
-    // Enter Waze driving view — high pitch, bearing toward destination, tight zoom
     if (map.current) {
-      const bearing = gpsPosition 
-        ? calcBearing(gpsPosition.lat, gpsPosition.lng, t.lat, t.lng)
-        : calcBearing(startLat, startLng, t.lat, t.lng);
-      
+      const bearing = gpsPosition ? calcBearing(gpsPosition.lat, gpsPosition.lng, t.lat, t.lng) : calcBearing(startLat, startLng, t.lat, t.lng);
       const pos = gpsPosition ?? { lng: startLng, lat: startLat };
       const bearingRad = (bearing * Math.PI) / 180;
-      const offsetLng = pos.lng - Math.sin(bearingRad) * 0.0015;
-      const offsetLat = pos.lat - Math.cos(bearingRad) * 0.0015;
-      
-      map.current.flyTo({
-        center: [offsetLng, offsetLat],
-        zoom: 16,
-        pitch: 65,
-        bearing: bearing,
-        duration: 1500,
-      });
+      map.current.flyTo({ center: [pos.lng - Math.sin(bearingRad) * 0.0015, pos.lat - Math.cos(bearingRad) * 0.0015], zoom: 16, pitch: 65, bearing, duration: 1500 });
     }
   }, [gpsPosition, allHazards, currentLevel, gpsActive, toggleGPS]);
 
-  // Update nav info when GPS moves
+  // Update nav info
   useEffect(() => {
     if (!navTarget) { setNavInfo(null); return; }
     if (!gpsPosition) { setNavInfo({ distance: routeResult ? `${routeResult.distance_nm.toFixed(2)} nm` : '--', bearing: '--', eta: 'Enable GPS' }); return; }
-    // Recompute route from new GPS position
     const result = findWaterRoute(gpsPosition.lng, gpsPosition.lat, navTarget.lng, navTarget.lat, allHazards, currentLevel);
     setRouteResult(result);
     if (map.current?.getSource('nav-route')) {
-      (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({
-        type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {}
-      });
+      (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {} });
     }
     const brng = calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
-    // Use actual speed if moving fast enough (>5kn), otherwise assume 20kn cruising
     const rawSpeedKn = gpsPosition.speed ? gpsPosition.speed * 1.94384 : 0;
-    const speedKn = rawSpeedKn > 5 ? rawSpeedKn : 20; // 20kn ≈ 23mph typical boat speed
+    const speedKn = rawSpeedKn > 5 ? rawSpeedKn : 20;
     const etaMin = (result.distance_nm / speedKn) * 60;
     const etaStr = etaMin < 1 ? '<1 min' : etaMin < 60 ? `${Math.round(etaMin)} min` : `${Math.floor(etaMin / 60)}h ${Math.round(etaMin % 60)}m`;
     setNavInfo({
@@ -328,33 +281,18 @@ export default function Home() {
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Determine what we're attaching the photo to
     const poiId = selectedPOI?.id;
     const hazardId = selectedHazard?.id;
-    if (!poiId && !hazardId) {
-      alert('Select a location first');
-      e.target.value = '';
-      return;
-    }
-
+    if (!poiId && !hazardId) { alert('Select a location first'); e.target.value = ''; return; }
     try {
       const formData = new FormData();
       formData.append('file', file);
       if (poiId) formData.append('poi_id', poiId);
       if (hazardId) formData.append('hazard_id', hazardId);
-
       const res = await fetch('/api/photos', { method: 'POST', body: formData });
       const data = await res.json();
-
-      if (res.ok) {
-        alert('Photo uploaded successfully!');
-      } else {
-        alert(`Upload failed: ${data.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      alert('Upload failed — check your connection and try again');
-    }
+      if (res.ok) { alert('Photo uploaded successfully!'); } else { alert(`Upload failed: ${data.error || 'Unknown error'}`); }
+    } catch (err) { alert('Upload failed — check your connection and try again'); }
     e.target.value = '';
   }, [selectedPOI, selectedHazard]);
 
@@ -366,20 +304,14 @@ export default function Home() {
   const cancelNav = useCallback(() => {
     setNavTarget(null); setNavInfo(null); setRouteResult(null);
     if (map.current?.getSource('nav-route')) (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] }, properties: {} });
-    // Reset view from driving mode back to flat
-    if (map.current) {
-      map.current.easeTo({ pitch: 0, bearing: 0, zoom: 13, duration: 800 });
-    }
+    if (map.current) { map.current.easeTo({ pitch: 0, bearing: 0, zoom: 13, duration: 800 }); }
   }, []);
 
   const levelDiff = waterLevel.below_full_pool_ft ?? (FULL_POOL - currentLevel);
   const levelStatus = waterLevel.status;
-
-  // Render icon component for detail panels
   const POIIcon = selectedPOI ? POI_ICONS[selectedPOI.type] : null;
   const HazardIcon = selectedHazard ? HAZARD_ICONS[selectedHazard.type] : null;
 
-  // Search filtering — prioritize fuel & restaurants (what boaters need most)
   const TYPE_PRIORITY: Record<string, number> = {
     fuel: 0, restaurant: 1, marina: 2, boat_ramp: 3, beach: 4,
     fishing: 5, campground: 6, park: 7, dock: 8, island: 9, rope_swing: 10,
@@ -393,22 +325,14 @@ export default function Home() {
     }
     return true;
   }).sort((a, b) => {
-    // When no query, sort by priority (fuel first, then restaurants, etc.)
-    if (!searchQuery && !searchCategory) {
-      return (TYPE_PRIORITY[a.type] ?? 99) - (TYPE_PRIORITY[b.type] ?? 99);
-    }
+    if (!searchQuery && !searchCategory) { return (TYPE_PRIORITY[a.type] ?? 99) - (TYPE_PRIORITY[b.type] ?? 99); }
     return 0;
   }).slice(0, searchQuery ? 30 : 200);
 
-  // Group by type for sectioned display when browsing (no query)
   const searchSections: { type: string; label: string; color: string; pois: typeof filteredSearchPOIs }[] = [];
   if (!searchQuery && !searchCategory) {
     const grouped: Record<string, typeof filteredSearchPOIs> = {};
-    filteredSearchPOIs.forEach(p => {
-      if (!grouped[p.type]) grouped[p.type] = [];
-      grouped[p.type].push(p);
-    });
-    // Explicitly sort sections by priority — fuel first, restaurants second
+    filteredSearchPOIs.forEach(p => { if (!grouped[p.type]) grouped[p.type] = []; grouped[p.type].push(p); });
     const sectionOrder = ['fuel', 'restaurant', 'marina', 'boat_ramp', 'beach', 'fishing', 'campground', 'park', 'dock', 'island', 'rope_swing'];
     sectionOrder.forEach(type => {
       if (grouped[type]) {
@@ -424,7 +348,7 @@ export default function Home() {
     <div className="map-wrapper">
       <div ref={mapContainer} className="map-container" />
 
-      {/* ─── NAVIGATION MODE: Top Bar (Waze-style bearing + destination) ─── */}
+      {/* ─── NAVIGATION MODE: Top Bar ─── */}
       {navTarget && navInfo && (
         <div className="nav-top-bar">
           <div className="nav-bearing-circle">
@@ -439,24 +363,15 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── NAVIGATION MODE: Bottom Bar (Waze-style ETA + distance + speed) ─── */}
+      {/* ─── NAVIGATION MODE: Bottom Bar ─── */}
       {navTarget && navInfo && (
         <div className="nav-bottom-bar">
           <div className="nav-stats">
-            <div className="nav-stat">
-              <div className="nav-stat-value">{navInfo.eta}</div>
-              <div className="nav-stat-label">ETA</div>
-            </div>
+            <div className="nav-stat"><div className="nav-stat-value">{navInfo.eta}</div><div className="nav-stat-label">ETA</div></div>
             <div className="nav-stat-divider" />
-            <div className="nav-stat">
-              <div className="nav-stat-value">{navInfo.distance}</div>
-              <div className="nav-stat-label">Distance</div>
-            </div>
+            <div className="nav-stat"><div className="nav-stat-value">{navInfo.distance}</div><div className="nav-stat-label">Distance</div></div>
             <div className="nav-stat-divider" />
-            <div className="nav-stat">
-              <div className="nav-stat-value">{boatSpeedMPH ? `${boatSpeedMPH.toFixed(0)}` : '--'}</div>
-              <div className="nav-stat-label">MPH</div>
-            </div>
+            <div className="nav-stat"><div className="nav-stat-value">{boatSpeedMPH ? `${boatSpeedMPH.toFixed(0)}` : '--'}</div><div className="nav-stat-label">MPH</div></div>
           </div>
           <div className="nav-actions">
             <button className="nav-btn-stop" onClick={cancelNav}>Stop</button>
@@ -465,14 +380,9 @@ export default function Home() {
                 setFollowMode(true);
                 const bearing = gpsPosition.heading ?? calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
                 const bearingRad = (bearing * Math.PI) / 180;
-                map.current.flyTo({
-                  center: [gpsPosition.lng - Math.sin(bearingRad) * 0.0015, gpsPosition.lat - Math.cos(bearingRad) * 0.0015],
-                  zoom: 16, pitch: 65, bearing, duration: 800
-                });
+                map.current.flyTo({ center: [gpsPosition.lng - Math.sin(bearingRad) * 0.0015, gpsPosition.lat - Math.cos(bearingRad) * 0.0015], zoom: 16, pitch: 65, bearing, duration: 800 });
               }
-            }}>
-              <IconGps size={22} />
-            </button>
+            }}><IconGps size={22} /></button>
           </div>
         </div>
       )}
@@ -488,7 +398,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── Water Level Badge (top-left floating) ─── */}
+      {/* ─── Water Level Badge ─── */}
       {!navTarget && (
         <div className="water-badge" onContextMenu={(e) => { e.preventDefault(); setEditMode(true); }} onDoubleClick={() => setEditMode(true)}>
           <img src="/logo-navilake.png" alt="NaviLake" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
@@ -499,25 +409,19 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── FABs right side (Waze-style floating buttons) ─── */}
+      {/* ─── FABs ─── */}
       {!navTarget && (
         <div className="fab-stack bottom">
           <button className={`fab-btn ${gpsActive ? 'active' : ''}`} onClick={() => {
             if (gpsActive && !followMode) { setFollowMode(true); if (gpsPosition && map.current) map.current.flyTo({ center: [gpsPosition.lng, gpsPosition.lat], zoom: 15.5, duration: 800 }); }
             else toggleGPS();
-          }}>
-            <IconGps size={22} />
-          </button>
-          <button className="fab-btn" onClick={() => { setShowFilters(true); setShowSearch(false); setSelectedPOI(null); setSelectedHazard(null); }}>
-            <IconLayers size={22} />
-          </button>
-          <button className="fab-btn hazard" onClick={() => { setCreatePinMode('hazard'); setSelectedPOI(null); setSelectedHazard(null); setShowSearch(false); setShowFilters(false); }}>
-            <IconAlert size={22} />
-          </button>
+          }}><IconGps size={22} /></button>
+          <button className="fab-btn" onClick={() => { setShowFilters(true); setShowSearch(false); setSelectedPOI(null); setSelectedHazard(null); }}><IconLayers size={22} /></button>
+          <button className="fab-btn hazard" onClick={() => { setCreatePinMode('hazard'); setSelectedPOI(null); setSelectedHazard(null); setShowSearch(false); setShowFilters(false); }}><IconAlert size={22} /></button>
         </div>
       )}
 
-      {/* ─── Speed Circle (bottom-left, Waze style) ─── */}
+      {/* ─── Speed Circle ─── */}
       {gpsActive && !navTarget && (
         <div className={`speed-circle ${boatSpeedMPH && boatSpeedMPH > 1 ? 'active' : ''}`}>
           <div className="speed-value">{boatSpeedMPH ? boatSpeedMPH.toFixed(0) : '0'}</div>
@@ -525,17 +429,16 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── "Where to?" Bar (bottom, Waze search) ─── */}
+      {/* ─── "Where to?" Bar ─── */}
       {!navTarget && !selectedPOI && !selectedHazard && !showFilters && !showCreateForm && !createPinMode && (
         <div className="bottom-bar-wrap">
-          {/* Quick access row */}
           <div className="quick-pills">
             <button className="quick-pill" onClick={() => { setShowSearch(true); setShowFilters(false); setSearchCategory('fuel'); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="6" width="12" height="16" rx="1"/><path d="M15 10h2a2 2 0 012 2v4a2 2 0 002 2 2 2 0 002-2V9l-3-3"/></svg>
               Fuel
             </button>
             <button className="quick-pill" onClick={() => { setShowSearch(true); setShowFilters(false); setSearchCategory('restaurant'); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>
               Food
             </button>
             <button className="quick-pill" onClick={() => { setShowSearch(true); setShowFilters(false); setSearchCategory('marina'); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
@@ -547,7 +450,6 @@ export default function Home() {
               Ramps
             </button>
           </div>
-          {/* Where to bar */}
           <div className="where-to-bar" onClick={() => { setShowSearch(true); setShowFilters(false); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
             <div className="where-to-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -557,7 +459,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── Search Sheet ─── */}
+      {/* ─── Search Sheet (top-anchored for iOS keyboard) ─── */}
       <div className={`search-sheet ${showSearch ? 'open' : ''}`}>
         <div className="search-input-wrap">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -579,62 +481,64 @@ export default function Home() {
           })}
         </div>
 
-        {/* Sectioned results when browsing, flat list when searching */}
-        {(searchQuery || searchCategory) ? (<>
-          <div className="search-section-label">
-            {searchQuery ? `Results (${filteredSearchPOIs.length})` : (POI_CONFIG as Record<string, {label:string;color:string}>)[searchCategory!]?.label || 'All'}
-          </div>
-          {filteredSearchPOIs.map((poi) => {
-            const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
-            return (
-              <div key={poi.id} className="search-result" onClick={() => {
-                setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
-                setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
-              }}>
-                <div className="search-result-icon" style={{ background: `${c.color}15` }}>
-                  {Icon && <Icon size={20} color={c.color} />}
+        {/* Scrollable results area — input + chips stay pinned at top */}
+        <div className="search-results-scroll">
+          {(searchQuery || searchCategory) ? (<>
+            <div className="search-section-label">
+              {searchQuery ? `Results (${filteredSearchPOIs.length})` : (POI_CONFIG as Record<string, {label:string;color:string}>)[searchCategory!]?.label || 'All'}
+            </div>
+            {filteredSearchPOIs.map((poi) => {
+              const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
+              return (
+                <div key={poi.id} className="search-result" onClick={() => {
+                  setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
+                  setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
+                }}>
+                  <div className="search-result-icon" style={{ background: `${c.color}15` }}>
+                    {Icon && <Icon size={20} color={c.color} />}
+                  </div>
+                  <div className="search-result-info">
+                    <div className="search-result-name">{poi.name}</div>
+                    <div className="search-result-detail">{c.label}</div>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
                 </div>
-                <div className="search-result-info">
-                  <div className="search-result-name">{poi.name}</div>
-                  <div className="search-result-detail">{c.label}</div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
-              </div>
-            );
-          })}
-          {filteredSearchPOIs.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 24, color: 'var(--waze-text-muted)', fontSize: 13 }}>No results found</div>
-          )}
-        </>) : (<>
-          {searchSections.map((section) => {
-            const SectionIcon = POI_ICONS[section.type];
-            return (
-              <div key={section.type}>
-                <div className="search-section-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: section.color }}>
-                  {SectionIcon && <SectionIcon size={14} />} {section.label} <span style={{ color: 'var(--waze-text-muted)', fontWeight: 400 }}>({section.pois.length})</span>
-                </div>
-                {section.pois.map((poi) => {
-                  const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
-                  return (
-                    <div key={poi.id} className="search-result" onClick={() => {
-                      setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
-                      setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
-                    }}>
-                      <div className="search-result-icon" style={{ background: `${c.color}15` }}>
-                        {Icon && <Icon size={20} color={c.color} />}
+              );
+            })}
+            {filteredSearchPOIs.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 24, color: 'var(--waze-text-muted)', fontSize: 13 }}>No results found</div>
+            )}
+          </>) : (<>
+            {searchSections.map((section) => {
+              const SectionIcon = POI_ICONS[section.type];
+              return (
+                <div key={section.type}>
+                  <div className="search-section-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: section.color }}>
+                    {SectionIcon && <SectionIcon size={14} />} {section.label} <span style={{ color: 'var(--waze-text-muted)', fontWeight: 400 }}>({section.pois.length})</span>
+                  </div>
+                  {section.pois.map((poi) => {
+                    const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
+                    return (
+                      <div key={poi.id} className="search-result" onClick={() => {
+                        setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
+                        setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
+                      }}>
+                        <div className="search-result-icon" style={{ background: `${c.color}15` }}>
+                          {Icon && <Icon size={20} color={c.color} />}
+                        </div>
+                        <div className="search-result-info">
+                          <div className="search-result-name">{poi.name}</div>
+                          <div className="search-result-detail">{(poi.description || '').slice(0, 60)}{(poi.description || '').length > 60 ? '...' : ''}</div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
                       </div>
-                      <div className="search-result-info">
-                        <div className="search-result-name">{poi.name}</div>
-                        <div className="search-result-detail">{(poi.description || '').slice(0, 60)}{(poi.description || '').length > 60 ? '...' : ''}</div>
-                      </div>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </>)}
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </>)}
+        </div>
       </div>
 
       {/* ─── Backdrop ─── */}
@@ -708,7 +612,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── POI Detail Sheet (Waze destination card) ─── */}
+      {/* ─── POI Detail Sheet ─── */}
       <div className={`detail-sheet ${selectedPOI && !showCreateForm ? 'open' : ''}`}>
         {selectedPOI && (<>
           <div className="detail-handle"><div className="detail-handle-bar" /></div>
@@ -760,9 +664,9 @@ export default function Home() {
         })()}
       </div>
 
-      {/* Hidden photo input — iOS Safari needs opacity:0 not display:none for programmatic click */}
-      <input ref={photoInputRef} type="file" accept="image/*,image/heic,image/heif" 
-        style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, opacity: 0 }} 
+      {/* Hidden photo input */}
+      <input ref={photoInputRef} type="file" accept="image/*,image/heic,image/heif"
+        style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, opacity: 0 }}
         onChange={handlePhotoUpload} />
 
       {/* Edit mode banner */}
