@@ -55,12 +55,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 .speed-value{font-size:22px;font-weight:800;color:var(--waze-text);line-height:1}
 .speed-unit{font-size:9px;font-weight:600;color:var(--waze-text-muted);text-transform:uppercase;letter-spacing:.5px}
 
-/* Water Level Badge */
-.water-badge{position:absolute;top:calc(12px + var(--sat));left:12px;z-index:15;background:var(--waze-card);border-radius:var(--waze-radius-sm);box-shadow:var(--waze-shadow);padding:8px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--waze-text)}
-.water-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.water-level-num{font-weight:700;font-size:13px}
-.water-level-diff{font-size:11px;color:var(--waze-text-muted)}
-
 /* FABs */
 .fab-stack{position:absolute;right:12px;z-index:15;display:flex;flex-direction:column;gap:10px}
 .fab-stack.top{top:calc(12px + var(--sat))}
@@ -70,8 +64,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
 .fab-btn.active{background:var(--waze-blue);color:white;box-shadow:0 2px 12px rgba(13,59,102,0.4)}
 .fab-btn.hazard{color:var(--waze-orange)}
 
-/* Where To Bar — pinned to top, below water badge */
-.bottom-bar-wrap{position:absolute;top:calc(68px + var(--sat));left:12px;right:12px;z-index:16;display:flex;flex-direction:column;gap:8px}
+/* Where To Bar — pinned to top */
+.bottom-bar-wrap{position:absolute;top:calc(12px + var(--sat));left:12px;right:70px;z-index:16;display:flex;flex-direction:column;gap:8px}
 .where-to-bar{background:var(--waze-card);border-radius:var(--waze-radius);box-shadow:var(--waze-shadow-lg);padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
 .where-to-bar:active{transform:scale(.98)}
 .where-to-icon{width:36px;height:36px;border-radius:50%;background:var(--waze-teal);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -201,7 +195,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--font);-webkit-font-smoot
   .speed-circle{width:56px;height:56px}
   .speed-value{font-size:18px}
   .fab-btn{width:42px;height:42px}
-  .water-badge{padding:6px 10px}
   .search-result{padding:10px 6px}
   .search-result-icon{width:36px;height:36px}
   .search-result-name{font-size:13px}

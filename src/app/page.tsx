@@ -17,7 +17,6 @@ const LANIER_CENTER: [number, number] = [-84.035, 34.195];
 const LANIER_ZOOM = 12;
 const FULL_POOL = 1071.0;
 
-// SVG icon strings for map markers (can't use React components in DOM elements)
 const MARKER_SVG: Record<string, string> = {
   boat_ramp: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 21l3-3h4l3-9 3 9h4l3 3"/><path d="M12 3v6"/></svg>',
   marina: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="22"/><path d="M5 12H2a10 10 0 0020 0h-3"/></svg>',
@@ -100,13 +99,11 @@ export default function Home() {
 
   useEffect(() => { createPinModeRef.current = createPinMode; }, [createPinMode]);
 
-  // Fetch live water level
   useEffect(() => {
     async function fetchWL() { try { const r = await fetch('/api/water-level'); const j = await r.json(); if (j.success && j.data.elevation_ft !== null) setWaterLevel(j.data); } catch {} }
     fetchWL(); const i = setInterval(fetchWL, 15 * 60 * 1000); return () => clearInterval(i);
   }, []);
 
-  // Init map
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
     const m = new maplibregl.Map({ container: mapContainer.current, style: { version: 8, sources: { 'google-sat': { type: 'raster', tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'], tileSize: 256, maxzoom: 20, attribution: '&copy; Google' } }, layers: [{ id: 'satellite', type: 'raster', source: 'google-sat' }] }, center: LANIER_CENTER, zoom: LANIER_ZOOM, minZoom: 10, maxZoom: 19, maxPitch: 75, pitch: 0 });
@@ -121,9 +118,7 @@ export default function Home() {
       m.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', paint: { 'line-color': '#4285f4', 'line-width': 6, 'line-opacity': 0.95 } });
       setMapLoaded(true);
     });
-    m.on('click', (e) => {
-      if (createPinModeRef.current) { setPendingPin({ lng: e.lngLat.lng, lat: e.lngLat.lat, type: createPinModeRef.current }); setShowCreateForm(true); }
-    });
+    m.on('click', (e) => { if (createPinModeRef.current) { setPendingPin({ lng: e.lngLat.lng, lat: e.lngLat.lat, type: createPinModeRef.current }); setShowCreateForm(true); } });
     m.on('dragstart', () => setFollowMode(false));
     map.current = m;
     return () => { m.remove(); map.current = null; };
@@ -131,12 +126,9 @@ export default function Home() {
 
   useEffect(() => { if (map.current) map.current.getCanvas().style.cursor = createPinMode ? 'crosshair' : ''; }, [createPinMode]);
 
-  // GPS
   const toggleGPS = useCallback(() => {
     if (gpsActive) {
-      if (followMode) {
-        if (!followMode) { setFollowMode(true); return; }
-      }
+      if (followMode) { if (!followMode) { setFollowMode(true); return; } }
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null; gpsMarkerRef.current?.remove(); gpsMarkerRef.current = null;
       setGpsActive(false); setGpsPosition(null); setFollowMode(false); firstFixRef.current = false;
@@ -154,10 +146,7 @@ export default function Home() {
               gpsMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map.current);
             } else { gpsMarkerRef.current.setLngLat([lng, lat]); }
             if (heading !== null) { const h = gpsMarkerRef.current.getElement().querySelector('.gps-heading') as HTMLElement; if (h) h.style.transform = `rotate(${heading}deg)`; }
-            if (!firstFixRef.current) {
-              firstFixRef.current = true;
-              map.current.flyTo({ center: [lng, lat], zoom: 15.5, duration: 1200 });
-            }
+            if (!firstFixRef.current) { firstFixRef.current = true; map.current.flyTo({ center: [lng, lat], zoom: 15.5, duration: 1200 }); }
           }
         },
         () => setGpsActive(false),
@@ -166,22 +155,17 @@ export default function Home() {
     }
   }, [gpsActive, followMode]);
 
-  // Waze-style follow mode
   useEffect(() => {
     if (!followMode || !gpsPosition || !map.current || !firstFixRef.current) return;
     if (navTarget) {
       const bearing = gpsPosition.heading ?? calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
-      const offsetDist = 0.0015;
       const bearingRad = (bearing * Math.PI) / 180;
-      const offsetLng = gpsPosition.lng - Math.sin(bearingRad) * offsetDist;
-      const offsetLat = gpsPosition.lat - Math.cos(bearingRad) * offsetDist;
-      map.current.easeTo({ center: [offsetLng, offsetLat], zoom: 16, pitch: 65, bearing: bearing, duration: 1200, easing: (t) => t * (2 - t) });
+      map.current.easeTo({ center: [gpsPosition.lng - Math.sin(bearingRad) * 0.0015, gpsPosition.lat - Math.cos(bearingRad) * 0.0015], zoom: 16, pitch: 65, bearing, duration: 1200, easing: (t) => t * (2 - t) });
     } else {
       map.current.easeTo({ center: [gpsPosition.lng, gpsPosition.lat], duration: 800, easing: (t) => t * (2 - t) });
     }
   }, [gpsPosition, followMode, navTarget]);
 
-  // Navigate
   const navigateTo = useCallback((t: NavWaypoint) => {
     setNavTarget(t); setSelectedPOI(null); setSelectedHazard(null); setShowFilters(false); setShowSearch(false);
     if (!gpsActive) toggleGPS();
@@ -190,9 +174,7 @@ export default function Home() {
     const startLat = gpsPosition?.lat ?? map.current?.getCenter().lat ?? LANIER_CENTER[1];
     const result = findWaterRoute(startLng, startLat, t.lng, t.lat, allHazards, currentLevel);
     setRouteResult(result);
-    if (map.current?.getSource('nav-route')) {
-      (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {} });
-    }
+    if (map.current?.getSource('nav-route')) { (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {} }); }
     if (map.current) {
       const bearing = gpsPosition ? calcBearing(gpsPosition.lat, gpsPosition.lng, t.lat, t.lng) : calcBearing(startLat, startLng, t.lat, t.lng);
       const pos = gpsPosition ?? { lng: startLng, lat: startLat };
@@ -201,48 +183,33 @@ export default function Home() {
     }
   }, [gpsPosition, allHazards, currentLevel, gpsActive, toggleGPS]);
 
-  // Update nav info
   useEffect(() => {
     if (!navTarget) { setNavInfo(null); return; }
     if (!gpsPosition) { setNavInfo({ distance: routeResult ? `${routeResult.distance_nm.toFixed(2)} nm` : '--', bearing: '--', eta: 'Enable GPS' }); return; }
     const result = findWaterRoute(gpsPosition.lng, gpsPosition.lat, navTarget.lng, navTarget.lat, allHazards, currentLevel);
     setRouteResult(result);
-    if (map.current?.getSource('nav-route')) {
-      (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {} });
-    }
+    if (map.current?.getSource('nav-route')) { (map.current.getSource('nav-route') as maplibregl.GeoJSONSource).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: result.path }, properties: {} }); }
     const brng = calcBearing(gpsPosition.lat, gpsPosition.lng, navTarget.lat, navTarget.lng);
     const rawSpeedKn = gpsPosition.speed ? gpsPosition.speed * 1.94384 : 0;
     const speedKn = rawSpeedKn > 5 ? rawSpeedKn : 20;
     const etaMin = (result.distance_nm / speedKn) * 60;
     const etaStr = etaMin < 1 ? '<1 min' : etaMin < 60 ? `${Math.round(etaMin)} min` : `${Math.floor(etaMin / 60)}h ${Math.round(etaMin % 60)}m`;
-    setNavInfo({
-      distance: result.distance_nm < 0.1 ? `${(result.distance_nm * 6076).toFixed(0)} ft` : `${result.distance_nm.toFixed(2)} nm`,
-      bearing: `${brng.toFixed(0)}° ${bearingToCompass(brng)}`,
-      eta: etaStr,
-    });
+    setNavInfo({ distance: result.distance_nm < 0.1 ? `${(result.distance_nm * 6076).toFixed(0)} ft` : `${result.distance_nm.toFixed(2)} nm`, bearing: `${brng.toFixed(0)}° ${bearingToCompass(brng)}`, eta: etaStr });
   }, [gpsPosition, navTarget, allHazards, currentLevel]);
 
-  // Markers
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
     markersRef.current.forEach((m) => m.remove()); markersRef.current = [];
-    if (true) {
-      allPOIs.forEach((poi) => {
-        if (!poiFilters[poi.type]) return;
-        const c = POI_CONFIG[poi.type]; const svg = MARKER_SVG[poi.type] || '';
-        const el = document.createElement('div'); el.className = 'map-marker';
-        el.innerHTML = `<div class="marker-icon" style="background:${c.color}${editMode ? ';box-shadow:0 0 8px rgba(34,211,238,0.6)' : ''}">${svg}</div>`;
-        el.addEventListener('click', (e) => { e.stopPropagation(); setSelectedPOI(poi); setSelectedHazard(null); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14, duration: 800 }); });
-        const marker = new maplibregl.Marker({ element: el, anchor: 'center', draggable: editMode }).setLngLat([poi.lng, poi.lat]).addTo(map.current!);
-        if (editMode) {
-          marker.on('dragend', () => {
-            const lngLat = marker.getLngLat();
-            setAllPOIs(prev => prev.map(p => p.id === poi.id ? { ...p, lat: Math.round(lngLat.lat * 10000) / 10000, lng: Math.round(lngLat.lng * 10000) / 10000 } : p));
-          });
-        }
-        markersRef.current.push(marker);
-      });
-    }
+    allPOIs.forEach((poi) => {
+      if (!poiFilters[poi.type]) return;
+      const c = POI_CONFIG[poi.type]; const svg = MARKER_SVG[poi.type] || '';
+      const el = document.createElement('div'); el.className = 'map-marker';
+      el.innerHTML = `<div class="marker-icon" style="background:${c.color}${editMode ? ';box-shadow:0 0 8px rgba(34,211,238,0.6)' : ''}">${svg}</div>`;
+      el.addEventListener('click', (e) => { e.stopPropagation(); setSelectedPOI(poi); setSelectedHazard(null); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14, duration: 800 }); });
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center', draggable: editMode }).setLngLat([poi.lng, poi.lat]).addTo(map.current!);
+      if (editMode) { marker.on('dragend', () => { const lngLat = marker.getLngLat(); setAllPOIs(prev => prev.map(p => p.id === poi.id ? { ...p, lat: Math.round(lngLat.lat * 10000) / 10000, lng: Math.round(lngLat.lng * 10000) / 10000 } : p)); }); }
+      markersRef.current.push(marker);
+    });
     if (poiFilters.hazards) {
       allHazards.forEach((h) => {
         const svg = MARKER_SVG[h.type] || ''; const isExp = currentLevel <= h.elevation_ft; const near = currentLevel - h.elevation_ft < 3;
@@ -260,7 +227,6 @@ export default function Home() {
     }
   }, [mapLoaded, poiFilters, allPOIs, allHazards, currentLevel, navTarget, editMode]);
 
-  // Depth visibility
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
     DEPTH_ZONES.forEach((z) => { const v = poiFilters.depth ? 'visible' : 'none'; if (map.current!.getLayer(`depth-${z.id}`)) { map.current!.setLayoutProperty(`depth-${z.id}`, 'visibility', v); map.current!.setLayoutProperty(`depth-${z.id}-outline`, 'visibility', v); } });
@@ -270,29 +236,16 @@ export default function Home() {
 
   const handleCreatePin = useCallback(() => {
     if (!pendingPin || !newPinData.name || !newPinData.subtype) return;
-    if (pendingPin.type === 'poi') {
-      setAllPOIs((p) => [...p, { id: `u-${Date.now()}`, name: newPinData.name, type: newPinData.subtype as POIType, lat: pendingPin.lat, lng: pendingPin.lng, description: newPinData.description || 'User-added', reviews: 0 }]);
-    } else {
-      setAllHazards((p) => [...p, { id: `u-${Date.now()}`, type: newPinData.subtype as HazardType, lat: pendingPin.lat, lng: pendingPin.lng, description: newPinData.description || 'User-reported', elevation_ft: currentLevel - 2, severity: 'medium', reported_by: 'You', reported_at: new Date().toISOString().split('T')[0] }]);
-    }
+    if (pendingPin.type === 'poi') { setAllPOIs((p) => [...p, { id: `u-${Date.now()}`, name: newPinData.name, type: newPinData.subtype as POIType, lat: pendingPin.lat, lng: pendingPin.lng, description: newPinData.description || 'User-added', reviews: 0 }]); }
+    else { setAllHazards((p) => [...p, { id: `u-${Date.now()}`, type: newPinData.subtype as HazardType, lat: pendingPin.lat, lng: pendingPin.lng, description: newPinData.description || 'User-reported', elevation_ft: currentLevel - 2, severity: 'medium', reported_by: 'You', reported_at: new Date().toISOString().split('T')[0] }]); }
     setPendingPin(null); setShowCreateForm(false); setCreatePinMode(null); setNewPinData({ name: '', description: '', subtype: '' });
   }, [pendingPin, newPinData, currentLevel]);
 
   const handlePhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const poiId = selectedPOI?.id;
-    const hazardId = selectedHazard?.id;
+    const file = e.target.files?.[0]; if (!file) return;
+    const poiId = selectedPOI?.id; const hazardId = selectedHazard?.id;
     if (!poiId && !hazardId) { alert('Select a location first'); e.target.value = ''; return; }
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (poiId) formData.append('poi_id', poiId);
-      if (hazardId) formData.append('hazard_id', hazardId);
-      const res = await fetch('/api/photos', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (res.ok) { alert('Photo uploaded successfully!'); } else { alert(`Upload failed: ${data.error || 'Unknown error'}`); }
-    } catch (err) { alert('Upload failed — check your connection and try again'); }
+    try { const formData = new FormData(); formData.append('file', file); if (poiId) formData.append('poi_id', poiId); if (hazardId) formData.append('hazard_id', hazardId); const res = await fetch('/api/photos', { method: 'POST', body: formData }); const data = await res.json(); if (res.ok) { alert('Photo uploaded successfully!'); } else { alert(`Upload failed: ${data.error || 'Unknown error'}`); } } catch (err) { alert('Upload failed — check your connection and try again'); }
     e.target.value = '';
   }, [selectedPOI, selectedHazard]);
 
@@ -308,37 +261,23 @@ export default function Home() {
   }, []);
 
   const levelDiff = waterLevel.below_full_pool_ft ?? (FULL_POOL - currentLevel);
-  const levelStatus = waterLevel.status;
   const POIIcon = selectedPOI ? POI_ICONS[selectedPOI.type] : null;
   const HazardIcon = selectedHazard ? HAZARD_ICONS[selectedHazard.type] : null;
 
-  const TYPE_PRIORITY: Record<string, number> = {
-    fuel: 0, restaurant: 1, marina: 2, boat_ramp: 3, beach: 4,
-    fishing: 5, campground: 6, park: 7, dock: 8, island: 9, rope_swing: 10,
-  };
+  const TYPE_PRIORITY: Record<string, number> = { fuel: 0, restaurant: 1, marina: 2, boat_ramp: 3, beach: 4, fishing: 5, campground: 6, park: 7, dock: 8, island: 9, rope_swing: 10 };
 
   const filteredSearchPOIs = allPOIs.filter(p => {
     if (searchCategory && p.type !== searchCategory) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
-    }
+    if (searchQuery) { const q = searchQuery.toLowerCase(); return p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q); }
     return true;
-  }).sort((a, b) => {
-    if (!searchQuery && !searchCategory) { return (TYPE_PRIORITY[a.type] ?? 99) - (TYPE_PRIORITY[b.type] ?? 99); }
-    return 0;
-  }).slice(0, searchQuery ? 30 : 200);
+  }).sort((a, b) => { if (!searchQuery && !searchCategory) { return (TYPE_PRIORITY[a.type] ?? 99) - (TYPE_PRIORITY[b.type] ?? 99); } return 0; }).slice(0, searchQuery ? 30 : 200);
 
   const searchSections: { type: string; label: string; color: string; pois: typeof filteredSearchPOIs }[] = [];
   if (!searchQuery && !searchCategory) {
     const grouped: Record<string, typeof filteredSearchPOIs> = {};
     filteredSearchPOIs.forEach(p => { if (!grouped[p.type]) grouped[p.type] = []; grouped[p.type].push(p); });
-    const sectionOrder = ['fuel', 'restaurant', 'marina', 'boat_ramp', 'beach', 'fishing', 'campground', 'park', 'dock', 'island', 'rope_swing'];
-    sectionOrder.forEach(type => {
-      if (grouped[type]) {
-        const cfg = (POI_CONFIG as Record<string, {label:string;color:string}>)[type];
-        if (cfg) searchSections.push({ type, label: cfg.label, color: cfg.color, pois: grouped[type] });
-      }
+    ['fuel', 'restaurant', 'marina', 'boat_ramp', 'beach', 'fishing', 'campground', 'park', 'dock', 'island', 'rope_swing'].forEach(type => {
+      if (grouped[type]) { const cfg = (POI_CONFIG as Record<string, {label:string;color:string}>)[type]; if (cfg) searchSections.push({ type, label: cfg.label, color: cfg.color, pois: grouped[type] }); }
     });
   }
 
@@ -391,21 +330,8 @@ export default function Home() {
       {routeResult && routeResult.warnings.length > 0 && (
         <div className="route-warnings" style={{ top: navTarget ? `calc(100px + var(--sat))` : `calc(60px + var(--sat))` }}>
           {routeResult.warnings.map((w, i) => (
-            <div key={i} className={`route-warning-item ${w.includes('Shallow') || w.includes('hazard') ? 'caution' : 'danger'}`}>
-              <IconWarning size={14} /> {w}
-            </div>
+            <div key={i} className={`route-warning-item ${w.includes('Shallow') || w.includes('hazard') ? 'caution' : 'danger'}`}><IconWarning size={14} /> {w}</div>
           ))}
-        </div>
-      )}
-
-      {/* ─── Water Level Badge ─── */}
-      {!navTarget && (
-        <div className="water-badge" onContextMenu={(e) => { e.preventDefault(); setEditMode(true); }} onDoubleClick={() => setEditMode(true)}>
-          <img src="/logo-navilake.png" alt="NaviLake" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
-          <div>
-            <div className="water-level-num">{waterLevel.elevation_ft?.toFixed(2) ?? '---'} ft</div>
-            <div className="water-level-diff">{levelDiff > 0 ? `${levelDiff.toFixed(1)}ft below full` : 'Full pool'}</div>
-          </div>
         </div>
       )}
 
@@ -429,9 +355,15 @@ export default function Home() {
         </div>
       )}
 
-      {/* ─── "Where to?" Bar ─── */}
+      {/* ─── "Where to?" + Quick Pills (top of screen) ─── */}
       {!navTarget && !selectedPOI && !selectedHazard && !showFilters && !showCreateForm && !createPinMode && (
         <div className="bottom-bar-wrap">
+          <div className="where-to-bar" onClick={() => { setShowSearch(true); setShowFilters(false); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
+            <div className="where-to-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+            <span className="where-to-text">Where to?</span>
+          </div>
           <div className="quick-pills">
             <button className="quick-pill" onClick={() => { setShowSearch(true); setShowFilters(false); setSearchCategory('fuel'); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="6" width="12" height="16" rx="1"/><path d="M15 10h2a2 2 0 012 2v4a2 2 0 002 2 2 2 0 002-2V9l-3-3"/></svg>
@@ -450,92 +382,48 @@ export default function Home() {
               Ramps
             </button>
           </div>
-          <div className="where-to-bar" onClick={() => { setShowSearch(true); setShowFilters(false); setTimeout(() => searchInputRef.current?.focus(), 400); }}>
-            <div className="where-to-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            </div>
-            <span className="where-to-text">Where to?</span>
-          </div>
         </div>
       )}
 
-      {/* ─── Search Sheet (top-anchored for iOS keyboard) ─── */}
+      {/* ─── Search Sheet ─── */}
       <div className={`search-sheet ${showSearch ? 'open' : ''}`}>
         <div className="search-input-wrap">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input ref={searchInputRef} className="search-input" placeholder="Find fuel, food, marinas, ramps..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-          <button onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchCategory(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--waze-text-muted)', padding: 4 }}>
-            <IconX size={18} />
-          </button>
+          <button onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchCategory(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--waze-text-muted)', padding: 4 }}><IconX size={18} /></button>
         </div>
         <div className="search-category-chips">
           {['fuel', 'restaurant', 'marina', 'boat_ramp', 'beach', 'fishing', 'campground', 'park', 'dock', 'island'].map(key => {
-            const cfg = (POI_CONFIG as Record<string, {label:string;color:string}>)[key];
-            const Icon = POI_ICONS[key];
-            if (!cfg) return null;
-            return (
-              <button key={key} className={`category-chip ${searchCategory === key ? 'active' : ''}`} onClick={() => setSearchCategory(searchCategory === key ? null : key)}>
-                {Icon && <Icon size={14} />} {cfg.label}
-              </button>
-            );
+            const cfg = (POI_CONFIG as Record<string, {label:string;color:string}>)[key]; const Icon = POI_ICONS[key]; if (!cfg) return null;
+            return (<button key={key} className={`category-chip ${searchCategory === key ? 'active' : ''}`} onClick={() => setSearchCategory(searchCategory === key ? null : key)}>{Icon && <Icon size={14} />} {cfg.label}</button>);
           })}
         </div>
-
-        {/* Scrollable results area — input + chips stay pinned at top */}
         <div className="search-results-scroll">
           {(searchQuery || searchCategory) ? (<>
-            <div className="search-section-label">
-              {searchQuery ? `Results (${filteredSearchPOIs.length})` : (POI_CONFIG as Record<string, {label:string;color:string}>)[searchCategory!]?.label || 'All'}
-            </div>
+            <div className="search-section-label">{searchQuery ? `Results (${filteredSearchPOIs.length})` : (POI_CONFIG as Record<string, {label:string;color:string}>)[searchCategory!]?.label || 'All'}</div>
             {filteredSearchPOIs.map((poi) => {
               const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
-              return (
-                <div key={poi.id} className="search-result" onClick={() => {
-                  setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
-                  setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
-                }}>
-                  <div className="search-result-icon" style={{ background: `${c.color}15` }}>
-                    {Icon && <Icon size={20} color={c.color} />}
-                  </div>
-                  <div className="search-result-info">
-                    <div className="search-result-name">{poi.name}</div>
-                    <div className="search-result-detail">{c.label}</div>
-                  </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
-                </div>
-              );
+              return (<div key={poi.id} className="search-result" onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchCategory(null); setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 }); }}>
+                <div className="search-result-icon" style={{ background: `${c.color}15` }}>{Icon && <Icon size={20} color={c.color} />}</div>
+                <div className="search-result-info"><div className="search-result-name">{poi.name}</div><div className="search-result-detail">{c.label}</div></div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
+              </div>);
             })}
-            {filteredSearchPOIs.length === 0 && (
-              <div style={{ textAlign: 'center', padding: 24, color: 'var(--waze-text-muted)', fontSize: 13 }}>No results found</div>
-            )}
+            {filteredSearchPOIs.length === 0 && (<div style={{ textAlign: 'center', padding: 24, color: 'var(--waze-text-muted)', fontSize: 13 }}>No results found</div>)}
           </>) : (<>
             {searchSections.map((section) => {
               const SectionIcon = POI_ICONS[section.type];
-              return (
-                <div key={section.type}>
-                  <div className="search-section-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: section.color }}>
-                    {SectionIcon && <SectionIcon size={14} />} {section.label} <span style={{ color: 'var(--waze-text-muted)', fontWeight: 400 }}>({section.pois.length})</span>
-                  </div>
-                  {section.pois.map((poi) => {
-                    const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
-                    return (
-                      <div key={poi.id} className="search-result" onClick={() => {
-                        setShowSearch(false); setSearchQuery(''); setSearchCategory(null);
-                        setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 });
-                      }}>
-                        <div className="search-result-icon" style={{ background: `${c.color}15` }}>
-                          {Icon && <Icon size={20} color={c.color} />}
-                        </div>
-                        <div className="search-result-info">
-                          <div className="search-result-name">{poi.name}</div>
-                          <div className="search-result-detail">{(poi.description || '').slice(0, 60)}{(poi.description || '').length > 60 ? '...' : ''}</div>
-                        </div>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
+              return (<div key={section.type}>
+                <div className="search-section-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: section.color }}>{SectionIcon && <SectionIcon size={14} />} {section.label} <span style={{ color: 'var(--waze-text-muted)', fontWeight: 400 }}>({section.pois.length})</span></div>
+                {section.pois.map((poi) => {
+                  const c = POI_CONFIG[poi.type]; const Icon = POI_ICONS[poi.type];
+                  return (<div key={poi.id} className="search-result" onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchCategory(null); setSelectedPOI(poi); map.current?.flyTo({ center: [poi.lng, poi.lat], zoom: 14.5, duration: 800 }); }}>
+                    <div className="search-result-icon" style={{ background: `${c.color}15` }}>{Icon && <Icon size={20} color={c.color} />}</div>
+                    <div className="search-result-info"><div className="search-result-name">{poi.name}</div><div className="search-result-detail">{(poi.description || '').slice(0, 60)}{(poi.description || '').length > 60 ? '...' : ''}</div></div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--waze-text-muted)" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6"/></svg>
+                  </div>);
+                })}
+              </div>);
             })}
           </>)}
         </div>
@@ -552,25 +440,14 @@ export default function Home() {
         </div>
         <div className="filter-grid">
           {Object.entries(POI_CONFIG).map(([key, cfg]) => {
-            const Icon = POI_ICONS[key];
-            const count = allPOIs.filter(p => p.type === key).length;
-            return (
-              <button key={key} className={`filter-btn ${poiFilters[key] ? 'active' : ''}`} onClick={() => toggleFilter(key)} style={{ color: poiFilters[key] ? cfg.color : 'var(--waze-text-muted)' }}>
-                {Icon && <Icon size={20} />}
-                <div className="filter-btn-label">{cfg.label}</div>
-                <div className="filter-btn-count">{count}</div>
-              </button>
-            );
+            const Icon = POI_ICONS[key]; const count = allPOIs.filter(p => p.type === key).length;
+            return (<button key={key} className={`filter-btn ${poiFilters[key] ? 'active' : ''}`} onClick={() => toggleFilter(key)} style={{ color: poiFilters[key] ? cfg.color : 'var(--waze-text-muted)' }}>{Icon && <Icon size={20} />}<div className="filter-btn-label">{cfg.label}</div><div className="filter-btn-count">{count}</div></button>);
           })}
         </div>
         <div className="filter-section-label">Overlays</div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className={`filter-btn ${poiFilters.hazards ? 'active' : ''}`} onClick={() => toggleFilter('hazards')} style={{ flex: 1, color: poiFilters.hazards ? 'var(--waze-orange)' : 'var(--waze-text-muted)', flexDirection: 'row', gap: 8 }}>
-            <IconWarning size={18} /> <span className="filter-btn-label">Hazards</span> <span className="filter-btn-count">{allHazards.length}</span>
-          </button>
-          <button className={`filter-btn ${poiFilters.depth ? 'active' : ''}`} onClick={() => toggleFilter('depth')} style={{ flex: 1, color: poiFilters.depth ? 'var(--waze-teal)' : 'var(--waze-text-muted)', flexDirection: 'row', gap: 8 }}>
-            <IconWaves size={18} /> <span className="filter-btn-label">Depth</span>
-          </button>
+          <button className={`filter-btn ${poiFilters.hazards ? 'active' : ''}`} onClick={() => toggleFilter('hazards')} style={{ flex: 1, color: poiFilters.hazards ? 'var(--waze-orange)' : 'var(--waze-text-muted)', flexDirection: 'row', gap: 8 }}><IconWarning size={18} /> <span className="filter-btn-label">Hazards</span> <span className="filter-btn-count">{allHazards.length}</span></button>
+          <button className={`filter-btn ${poiFilters.depth ? 'active' : ''}`} onClick={() => toggleFilter('depth')} style={{ flex: 1, color: poiFilters.depth ? 'var(--waze-teal)' : 'var(--waze-text-muted)', flexDirection: 'row', gap: 8 }}><IconWaves size={18} /> <span className="filter-btn-label">Depth</span></button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
           <button className="btn btn-secondary" style={{ flex: 1, fontSize: 12 }} onClick={() => setPoiFilters(p => { const n: Record<string,boolean> = {}; Object.keys(p).forEach(k => n[k] = true); return n; })}>Show all</button>
@@ -595,18 +472,13 @@ export default function Home() {
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--waze-text)' }}>{pendingPin.type === 'hazard' ? 'Report hazard' : 'New spot'}</div>
             <div>
               <label className="form-label">Type</label>
-              <select className="form-select" value={newPinData.subtype} onChange={(e) => setNewPinData((p) => ({ ...p, subtype: e.target.value }))}>
-                <option value="">Select...</option>
-                {pendingPin.type === 'hazard' ? Object.entries(HAZARD_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>) : Object.entries(POI_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
+              <select className="form-select" value={newPinData.subtype} onChange={(e) => setNewPinData((p) => ({ ...p, subtype: e.target.value }))}><option value="">Select...</option>{pendingPin.type === 'hazard' ? Object.entries(HAZARD_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>) : Object.entries(POI_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
             </div>
             <div><label className="form-label">Name</label><input className="form-input" type="text" value={newPinData.name} onChange={(e) => setNewPinData((p) => ({ ...p, name: e.target.value }))} placeholder={pendingPin.type === 'hazard' ? 'e.g. Submerged tree near cove' : 'e.g. Hidden beach spot'} /></div>
             <div><label className="form-label">Description</label><textarea className="form-textarea" value={newPinData.description} onChange={(e) => setNewPinData((p) => ({ ...p, description: e.target.value }))} placeholder="Details, tips, warnings..." rows={3} /></div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowCreateForm(false); setPendingPin(null); setCreatePinMode(null); }}>Cancel</button>
-              <button className={`btn ${pendingPin.type === 'hazard' ? 'btn-danger' : 'btn-primary'}`} style={{ flex: 2 }} disabled={!newPinData.name || !newPinData.subtype} onClick={handleCreatePin}>
-                {pendingPin.type === 'hazard' ? <><IconFlag size={14} /> Report</> : <><IconCheck size={14} /> Save</>}
-              </button>
+              <button className={`btn ${pendingPin.type === 'hazard' ? 'btn-danger' : 'btn-primary'}`} style={{ flex: 2 }} disabled={!newPinData.name || !newPinData.subtype} onClick={handleCreatePin}>{pendingPin.type === 'hazard' ? <><IconFlag size={14} /> Report</> : <><IconCheck size={14} /> Save</>}</button>
             </div>
           </div>
         </div>
@@ -618,9 +490,7 @@ export default function Home() {
           <div className="detail-handle"><div className="detail-handle-bar" /></div>
           <div className="detail-header">
             <div>
-              <div className="detail-type-badge" style={{ background: `${POI_CONFIG[selectedPOI.type].color}15`, color: POI_CONFIG[selectedPOI.type].color }}>
-                {POIIcon && <POIIcon size={14} />} {POI_CONFIG[selectedPOI.type].label}
-              </div>
+              <div className="detail-type-badge" style={{ background: `${POI_CONFIG[selectedPOI.type].color}15`, color: POI_CONFIG[selectedPOI.type].color }}>{POIIcon && <POIIcon size={14} />} {POI_CONFIG[selectedPOI.type].label}</div>
               <div className="detail-name">{selectedPOI.name}</div>
             </div>
             <button className="detail-close" onClick={() => setSelectedPOI(null)}><IconX size={16} /></button>
@@ -629,9 +499,7 @@ export default function Home() {
           {selectedPOI.details && <div className="detail-meta">{Object.entries(selectedPOI.details).map(([k, v]) => <div key={k} className="meta-item"><div className="meta-label">{k}</div><div className="meta-value">{v}</div></div>)}</div>}
           <div className="detail-actions">
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => photoInputRef.current?.click()}><IconCamera size={14} /> Photo</button>
-            <button className="btn btn-primary" style={{ flex: 2 }} onClick={() => navigateTo({ lng: selectedPOI.lng, lat: selectedPOI.lat, name: selectedPOI.name })}>
-              <IconNavigation size={14} /> Go now
-            </button>
+            <button className="btn btn-primary" style={{ flex: 2 }} onClick={() => navigateTo({ lng: selectedPOI.lng, lat: selectedPOI.lat, name: selectedPOI.name })}><IconNavigation size={14} /> Go now</button>
           </div>
         </>)}
       </div>
@@ -664,12 +532,8 @@ export default function Home() {
         })()}
       </div>
 
-      {/* Hidden photo input */}
-      <input ref={photoInputRef} type="file" accept="image/*,image/heic,image/heif"
-        style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, opacity: 0 }}
-        onChange={handlePhotoUpload} />
+      <input ref={photoInputRef} type="file" accept="image/*,image/heic,image/heif" style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, opacity: 0 }} onChange={handlePhotoUpload} />
 
-      {/* Edit mode banner */}
       {editMode && (
         <div className="edit-banner">
           <span>EDIT MODE</span> — drag pins
