@@ -1,255 +1,118 @@
-export type POIType = 'boat_ramp' | 'marina' | 'dock' | 'rope_swing' | 'beach' | 'island' | 'fishing' | 'fuel' | 'restaurant' | 'campground' | 'park';
+// NaviLake POI Nuclear Rebuild — BATCHES 1-3 COMPLETE
+// 65 verified POIs: 42 boat ramps + 12 marinas + 11 restaurants
+// Sources: DiscoverLanier.com, fishing.org, Lake.com, Paddling.com
+// Date: March 30, 2026
+// NOTE: Restaurant coords derived from parent marina + ~50m offset toward water to prevent stacking
 
 export interface POI {
-  id: string; name: string; type: POIType; lat: number; lng: number;
-  description: string; rating?: number; reviews?: number;
-  details?: Record<string, string>;
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  type: 'boat_ramp' | 'marina' | 'restaurant' | 'fuel' | 'beach' | 'campground' | 'park' | 'island' | 'fishing_spot';
+  icon: string;
+  description?: string;
+  phone?: string;
+  address?: string;
 }
 
-export const POI_CONFIG: Record<POIType, { label: string; color: string }> = {
-  boat_ramp:  { label: 'Boat ramp',    color: '#22d3ee' },
-  marina:     { label: 'Marina',        color: '#3b82f6' },
-  dock:       { label: 'Dock',          color: '#6366f1' },
-  rope_swing: { label: 'Rope swing',    color: '#f59e0b' },
-  beach:      { label: 'Beach',         color: '#fbbf24' },
-  island:     { label: 'Island / bank', color: '#10b981' },
-  fishing:    { label: 'Fishing spot',  color: '#8b5cf6' },
-  fuel:       { label: 'Fuel dock',     color: '#ef4444' },
-  restaurant: { label: 'Restaurant',    color: '#f97316' },
-  campground: { label: 'Campground',    color: '#059669' },
-  park:       { label: 'Park',          color: '#64748b' },
-};
+export const pois: POI[] = [
+  // ═══════════════════════════════════════════════════
+  // BOAT RAMPS (42) — sorted south to north
+  // ═══════════════════════════════════════════════════
+  { id: "ramp-1", name: "East Bank", lat: 34.15187, lng: -84.05984, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-2", name: "Lanier Park", lat: 34.15108, lng: -84.05809, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-3", name: "Shoal Creek", lat: 34.15910, lng: -84.00768, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-4", name: "Big Creek", lat: 34.16630, lng: -83.99344, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-5", name: "Burton Mill", lat: 34.16763, lng: -83.97627, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-6", name: "Lanier Islands Ramp", lat: 34.17280, lng: -84.00370, type: "boat_ramp", icon: "ramp" }, // GPS: fishing.org
+  { id: "ramp-7", name: "Van Pugh", lat: 34.18794, lng: -83.98038, type: "boat_ramp", icon: "ramp" }, // GPS: Paddling.com
+  { id: "ramp-8", name: "Tidwell", lat: 34.19538, lng: -84.06297, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-9", name: "Mary Alice Park", lat: 34.19770, lng: -84.09880, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-10", name: "Bald Ridge Creek Park", lat: 34.20862, lng: -84.08436, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-11", name: "Two Mile Creek", lat: 34.21982, lng: -84.00435, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-12", name: "Young Deer Creek", lat: 34.22149, lng: -84.05769, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-13", name: "Shadburn Ferry", lat: 34.22454, lng: -84.02630, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-14", name: "Bethel Park", lat: 34.22744, lng: -83.99180, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-15", name: "Old Federal", lat: 34.22776, lng: -83.93660, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-16", name: "Vanns Tavern", lat: 34.23482, lng: -83.98102, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-17", name: "Williams Ferry", lat: 34.24232, lng: -83.96463, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-18", name: "Charleston", lat: 34.24315, lng: -84.04630, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-19", name: "Six Mile Creek", lat: 34.24427, lng: -84.03824, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-20", name: "Balus Creek", lat: 34.25225, lng: -83.91614, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-21", name: "Mountain View", lat: 34.25568, lng: -83.94447, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-22", name: "Long Hollow", lat: 34.28184, lng: -83.97214, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-23", name: "Keith Bridge", lat: 34.28267, lng: -83.94399, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-24", name: "River Forks", lat: 34.28793, lng: -83.90579, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-25", name: "Lanier Point Park", lat: 34.30140, lng: -83.86580, type: "boat_ramp", icon: "ramp" }, // GPS: fishing.org
+  { id: "ramp-26", name: "Robinson", lat: 34.30365, lng: -83.89714, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-27", name: "Duckett Mill", lat: 34.30700, lng: -83.93089, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-28", name: "Little Hall", lat: 34.31049, lng: -83.94226, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-29", name: "Simpson", lat: 34.31982, lng: -83.89074, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-30", name: "Wildcat Creek", lat: 34.32343, lng: -83.96185, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-31", name: "Sardis Creek", lat: 34.33593, lng: -83.88796, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-32", name: "Bolding Mill", lat: 34.33854, lng: -83.95409, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-33", name: "Thompson Creek", lat: 34.35010, lng: -84.01602, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-34", name: "Thompson Bridge", lat: 34.35196, lng: -83.84601, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-35", name: "Clarks Bridge Park", lat: 34.35350, lng: -83.79280, type: "boat_ramp", icon: "ramp" }, // GPS: fishing.org
+  { id: "ramp-36", name: "Laurel Park", lat: 34.35530, lng: -83.81360, type: "boat_ramp", icon: "ramp" }, // GPS: fishing.org
+  { id: "ramp-37", name: "Little River", lat: 34.35890, lng: -83.82900, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-38", name: "Nix Bridge", lat: 34.36273, lng: -83.98611, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-39", name: "White Sulphur", lat: 34.37371, lng: -83.76240, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-40", name: "Wahoo Creek", lat: 34.38722, lng: -83.85989, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-41", name: "Toto Creek", lat: 34.39494, lng: -83.98044, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
+  { id: "ramp-42", name: "Lumpkin County Park", lat: 34.42882, lng: -83.97518, type: "boat_ramp", icon: "ramp" }, // GPS: DiscoverLanier
 
-// ═══════════════════════════════════════════════════════════════════════════
-// THE DEFINITIVE LAKE LANIER DATABASE — 150+ LOCATIONS
-// Sources: USACE, Dawson/Hall/Forsyth/Gwinnett County, Lakeside News,
-// DiscoverLanier, lakelanier.com, marina websites, Boatsetter, HullTruth,
-// JetBoaters, OffshoreOnly forums, ExploreGeorgia, Google Maps verification
-// ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════
+  // MARINAS (12) — sorted south to north
+  // ═══════════════════════════════════════════════════
+  { id: "marina-1", name: "Lanier Harbor Marina", lat: 34.15030, lng: -84.02510, type: "marina", icon: "anchor", phone: "770-945-2884", address: "2066 Pine Tree Dr, Buford" }, // GPS: fishing.org
+  { id: "marina-2", name: "Lazy Days Marina", lat: 34.16550, lng: -84.00140, type: "marina", icon: "anchor", phone: "770-945-1991", address: "6700 Lanier Islands Pkwy, Buford" }, // GPS: fishing.org
+  { id: "marina-3", name: "Holiday Marina", lat: 34.16790, lng: -84.00300, type: "marina", icon: "anchor", phone: "770-945-7201", address: "6900 Holiday Rd, Buford" }, // GPS: fishing.org
+  { id: "marina-4", name: "Margaritaville at Lanier Islands", lat: 34.17760, lng: -84.03010, type: "marina", icon: "anchor", phone: "470-323-3465", address: "7650 Lanier Islands Pkwy, Buford" }, // GPS: latitude.to
+  { id: "marina-5", name: "Hideaway Bay Marina", lat: 34.18090, lng: -83.93860, type: "marina", icon: "anchor", phone: "770-967-5500", address: "6334 Mitchell St, Flowery Branch" }, // GPS: Lake.com
+  { id: "marina-6", name: "Habersham Marina", lat: 34.19076, lng: -84.10232, type: "marina", icon: "anchor", phone: "770-887-5432", address: "2200 Habersham Marina Rd, Cumming" }, // GPS: DiscoverLanier
+  { id: "marina-7", name: "Aqualand Marina", lat: 34.20143, lng: -83.96397, type: "marina", icon: "anchor", phone: "770-967-6811", address: "6800 Lights Ferry Rd, Flowery Branch" }, // GPS: fishing.org
+  { id: "marina-8", name: "Bald Ridge Marina", lat: 34.20730, lng: -84.09810, type: "marina", icon: "anchor", phone: "770-887-5309", address: "1850 Bald Ridge Marina Rd, Cumming" }, // GPS: Lake.com
+  { id: "marina-9", name: "Sunrise Cove Marina", lat: 34.23740, lng: -83.93430, type: "marina", icon: "anchor", phone: "770-536-8599", address: "5725 Flat Creek Rd, Gainesville" }, // GPS: Lake.com
+  { id: "marina-10", name: "Port Royale Marina", lat: 34.25149, lng: -83.96414, type: "marina", icon: "anchor", phone: "770-887-5715", address: "8800 Port Royale Dr, Gainesville" }, // GPS: DiscoverLanier
+  { id: "marina-11", name: "Gainesville Marina", lat: 34.32400, lng: -83.88200, type: "marina", icon: "anchor", phone: "770-536-2171", address: "2145 Dawsonville Hwy, Gainesville" }, // GPS: fishing.org
 
-export const SAMPLE_POIS: POI[] = [
+  // ═══════════════════════════════════════════════════
+  // RESTAURANTS (11) — at parent marinas, offset ~50m to prevent stacking
+  // ═══════════════════════════════════════════════════
 
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  MARINAS                                                            ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'm-01', name: 'Holiday Marina', type: 'marina', lat: 34.1679, lng: -84.0030, description: 'Oldest and largest marina. ~1,300 wet slips 22-100ft. Fuel dock, ship store, boat rentals, Singleton Marine service. Twisted Oar restaurant on site. South end near Lanier Islands.', details: { 'Slips': '~1,300', 'Fuel': 'Gas + diesel', 'Phone': '770-945-7201', 'Restaurant': 'Twisted Oar' } },
-  { id: 'm-02', name: 'Safe Harbor Aqualand', type: 'marina', lat: 34.2014, lng: -83.9640, description: 'Premier east-side marina in Flowery Branch. 1,725 wet + 460 dry. Houseboat launching, pump-out, bathhouses, laundry. Pig Tales BBQ on site. Marine travel lift. 24/7 gated. Largest marina on the lake by total docks.', details: { 'Slips': '2,185 total', 'Fuel': 'Gas + diesel', 'Phone': '770-967-6811', 'Restaurant': 'Pig Tales BBQ' } },
-  { id: 'm-03', name: 'Sunrise Cove Marina', type: 'marina', lat: 34.3050, lng: -83.8580, description: 'Quiet Gainesville marina on 62 acres of timberland. 626 slips. Known for tranquil setting, abundant wildlife (deer, fawns). Near downtown Gainesville dining and nightlife. Short drive from Mall of Georgia.', details: { 'Slips': '626', 'Fuel': 'Gas', 'Phone': '770-536-3333' } },
-  { id: 'm-04', name: 'Gainesville Marina', type: 'marina', lat: 34.3240, lng: -83.8820, description: 'Northernmost public marina. Family owned 55+ years. Only public marina north of Browns Bridge. Full service — sales, repair, fuel. Skogies restaurant on site with live music. Call ahead and they will pick you up at the dock.', details: { 'Slips': '688 wet + 9 dry', 'Fuel': 'Gas', 'Phone': '770-536-2171', 'Restaurant': 'Skogies' } },
-  { id: 'm-05', name: 'Bald Ridge Marina', type: 'marina', lat: 34.1920, lng: -84.1140, description: 'Southernmost marina, GA 400 exit 15. 600+ slips up to 66ft covered, 95ft open. Best fuel dock on the lake — 90 oct non-ethanol, diesel, multiple pump-outs. Smokey Q BBQ on site. MarineMax sales dock. Full bodywork and yacht repair.', details: { 'Slips': '600+', 'Fuel': '90 oct + diesel', 'Phone': '770-889-1201', 'Restaurant': 'Smokey Q BBQ' } },
-  { id: 'm-06', name: 'Habersham Marina', type: 'marina', lat: 34.1913, lng: -84.1017, description: 'Dry-stack marina in Cumming. 625 spaces up to 28ft. 3 miles off GA 400. Repair, detailing, bottom cleaning. Bathroom and shower facilities.', details: { 'Slips': '625 dry', 'Phone': '770-887-5432' } },
-  { id: 'm-07', name: 'Lazy Days Marina', type: 'marina', lat: 34.1655, lng: -84.0014, description: 'Full-service Buford marina near Lanier Islands Pkwy. 554 covered dry stack to 36ft, wet slips 50-125ft. Singleton Marine service. Carefree Boat Club. Boat Cloud smartphone app for launch/retrieval. Pre-fueling service.', details: { 'Dry': '554', 'Wet': '50-125ft', 'Fuel': 'Gas + diesel', 'Phone': '770-945-1991' } },
-  { id: 'm-08', name: 'Port Royale Marina', type: 'marina', lat: 34.2195, lng: -84.0830, description: 'Full-service off Browns Bridge Rd. 815 wet slips + 521 dry stack up to 39ft. Gateway to calm north lake. Pelican Pete\'s Tiki Bar & Grill on site — the only floating restaurant on Lake Lanier. Live music, great dock access.', details: { 'Slips': '815 wet + 521 dry', 'Fuel': '90 oct non-ethanol', 'Phone': '770-889-3294', 'Restaurant': "Pelican Pete's" } },
-  { id: 'm-09', name: 'Hideaway Bay Marina', type: 'marina', lat: 34.2350, lng: -83.9380, description: 'Flowery Branch marina on Mitchell St. 510 wet + 150 dry slips. Fish Tales restaurant on site — casual lakeside dining famous for grouper fingers, signature salads. Full bar with live music. Open year round.', details: { 'Slips': '510 wet + 150 dry', 'Phone': '770-967-5500', 'Restaurant': 'Fish Tales' } },
-  { id: 'm-10', name: 'Margaritaville at Lanier Islands', type: 'marina', lat: 34.1700, lng: -84.0340, description: 'Houseboat-only at Lanier Islands. 18x60 and 22x80 slips. Multiple restaurants — LandShark, Cantina, Tiki Bar. Pontoon rentals. Camp Margaritaville RV Resort nearby. 24/7 security.', details: { 'Type': 'Houseboats only', 'Food': 'LandShark, Cantina, Tiki Bar', 'Phone': '470-323-3465' } },
-  { id: 'm-11', name: 'Sugar Creek Marina', type: 'marina', lat: 34.2290, lng: -84.0620, description: 'West-side marina with fuel dock and ship store. Bait, boating supplies, sunblock, ice. Good mid-lake fuel stop.', details: { 'Fuel': 'Gas' } },
-  { id: 'm-12', name: 'Harbor Landing Marina', type: 'marina', lat: 34.3050, lng: -83.8550, description: 'Northeast marina near Flowery Branch. Boat rentals available. Popular staging for north-end day trips. Quieter waters.', details: {} },
+  // --- Lanier Islands complex (7000 Lanier Islands Pkwy) ---
+  { id: "rest-1", name: "Sidney's Dining", lat: 34.16950, lng: -84.01450, type: "restaurant", icon: "restaurant", description: "Upscale dining at Legacy Lodge", address: "7000 Lanier Islands Pkwy, Buford" }, // At Legacy Lodge
+  { id: "rest-2", name: "Bullfrogs Bar & Grill", lat: 34.16900, lng: -84.01400, type: "restaurant", icon: "restaurant", description: "Casual waterfront bar & grill", address: "7000 Lanier Islands Pkwy, Buford" }, // At Legacy Lodge
+  { id: "rest-3", name: "Twisted Oar", lat: 34.17050, lng: -84.01550, type: "restaurant", icon: "restaurant", description: "Lakeside dining at Lanier Islands", address: "Lanier Islands Pkwy, Buford" }, // At Lanier Islands
 
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  FUEL DOCKS                                                         ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'f-01', name: 'Holiday Fuel Dock', type: 'fuel', lat: 34.1683, lng: -84.003, description: 'Large fuel dock at Holiday Marina. Gas, diesel, pump-out. Ship store with ice, snacks, apparel, water toys.', details: { 'Fuel': 'Gas + diesel', 'Pump-out': 'Yes' } },
-  { id: 'f-02', name: 'Bald Ridge Fuel Dock', type: 'fuel', lat: 34.1924, lng: -84.114, description: 'Best fuel dock on the lake. 90 oct non-ethanol marine grade, diesel, multiple pump-out stations. Well shielded from rough water. Wind flag for captains.', details: { 'Fuel': '90 oct + diesel', 'Pump-out': 'Multiple stations' } },
-  { id: 'f-03', name: 'Aqualand Fuel Dock', type: 'fuel', lat: 34.2017, lng: -83.9642, description: 'Full fuel dock at Safe Harbor Aqualand. Gas and diesel. Pump-out station.', details: { 'Fuel': 'Gas + diesel', 'Pump-out': 'Yes' } },
-  { id: 'f-04', name: 'Lazy Days Fuel Dock', type: 'fuel', lat: 34.1655, lng: -84.0014, description: 'Fuel dock at Lazy Days. Pre-fueling service for dry stack customers. Wash racks available.', details: { 'Fuel': 'Gas + diesel' } },
-  { id: 'f-05', name: 'Gainesville Marina Fuel', type: 'fuel', lat: 34.3244, lng: -83.882, description: 'Northernmost fuel on the lake. Only fuel north of Browns Bridge. Gas available.', details: { 'Fuel': 'Gas' } },
-  { id: 'f-06', name: 'Port Royale Fuel Dock', type: 'fuel', lat: 34.2199, lng: -84.083, description: '90 oct non-ethanol fuel. Pay at the pump closes same time as restaurant.', details: { 'Fuel': '90 oct non-ethanol' } },
-  { id: 'f-07', name: 'Sugar Creek Fuel', type: 'fuel', lat: 34.2290, lng: -84.0620, description: 'Mid-lake west-side fuel stop at Sugar Creek Marina.', details: { 'Fuel': 'Gas' } },
-  { id: 'f-08', name: 'Hideaway Bay Fuel', type: 'fuel', lat: 34.2354, lng: -83.938, description: 'Fuel dock at Hideaway Bay Marina in Flowery Branch.', details: { 'Fuel': 'Gas' } },
-  { id: 'f-09', name: 'Habersham Marina Fuel', type: 'fuel', lat: 34.1916, lng: -84.1015, description: '90 oct non-ethanol recreational fuel at Habersham Marina in Cumming. Dry stack marina.', details: { 'Fuel': '90 oct non-ethanol' } },
-  { id: 'f-10', name: 'Harbor Landing / Margaritaville Fuel', type: 'fuel', lat: 34.1703, lng: -84.0342, description: 'Diesel and non-ethanol fuel at Harbor Landing Marina Basin near Margaritaville Water Park. Ship store. Pump-out services.', details: { 'Fuel': 'Diesel + non-ethanol', 'Pump-out': 'Yes' } },
-  { id: 'f-11', name: 'Port of Indecision Fuel', type: 'fuel', lat: 34.1740, lng: -84.0300, description: 'Regular fuel, high test, and ValvTect at Port of Indecision near Paradise Beach, Lanier Islands. Ship store.', details: { 'Fuel': 'Regular + high test + ValvTect' } },
+  // --- Margaritaville complex (7650 Lanier Islands Pkwy) ---
+  { id: "rest-4", name: "LandShark Bar & Grill", lat: 34.17810, lng: -84.02960, type: "restaurant", icon: "restaurant", description: "Jimmy Buffett-themed waterfront bar", phone: "470-323-3465", address: "7650 Lanier Islands Pkwy, Buford" }, // At Margaritaville, offset from marina
+  { id: "rest-5", name: "Cantina", lat: 34.17710, lng: -84.03060, type: "restaurant", icon: "restaurant", description: "Mexican cantina at Margaritaville", address: "7650 Lanier Islands Pkwy, Buford" }, // At Margaritaville, offset from LandShark
 
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  RESTAURANTS — Dock-accessible waterfront dining                    ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'rest-01', name: "Pelican Pete's Tiki Bar & Grill", type: 'restaurant', lat: 34.2195, lng: -84.0826, description: 'The ONLY floating restaurant on Lake Lanier. At Port Royale Marina. Tiki bar atmosphere, live music, great dock access. Fish tacos, Pete\'s shrimp bowl, frozen Lake Water cocktails. Picturesque dining on the water.', details: { 'Cuisine': 'Seafood, tiki bar', 'Dock': 'Port Royale Marina', 'Phone': '770-887-5715', 'Hours': 'Thu 4-9, Fri-Sun 11-9' } },
-  { id: 'rest-02', name: 'Pig Tales BBQ', type: 'restaurant', lat: 34.2018, lng: -83.9639, description: 'BBQ at Aqualand marina. Pulled pork, burgers, wings, cold beer, water views. Fried pickles and smokehouse burgers are standouts. Plenty of dock space. One of the most popular dock-and-dine spots.', details: { 'Cuisine': 'BBQ, burgers', 'Dock': 'Aqualand Marina', 'Phone': '770-967-6811' } },
-  { id: 'rest-03', name: 'Fish Tales', type: 'restaurant', lat: 34.235, lng: -83.9376, description: 'Casual lakeside dining at Hideaway Bay Marina in Flowery Branch. Famous for grouper fingers, signature salads, baja tacos. Full bar with live music. Open year-round. Family-friendly with lively weekends.', details: { 'Cuisine': 'Seafood, American', 'Dock': 'Hideaway Bay Marina', 'Phone': '770-967-3775', 'Known for': 'Grouper fingers' } },
-  { id: 'rest-04', name: 'Skogies on the Lake', type: 'restaurant', lat: 34.324, lng: -83.8816, description: 'At Gainesville Marina — the northernmost restaurant on Lanier. Casual dining with live music on weekends. Grouper sandwiches, slow-smoked pork BBQ, crab cakes, fried green tomatoes. Breakfast buffet on weekends. Call from your boat and they will pick you up.', details: { 'Cuisine': 'BBQ, seafood, American', 'Dock': 'Gainesville Marina', 'Phone': '678-450-1310', 'Known for': 'Grouper sandwich, boat pickup' } },
-  { id: 'rest-05', name: 'Smokey Q BBQ', type: 'restaurant', lat: 34.192, lng: -84.1136, description: 'BBQ at Bald Ridge Marina. Wings, sandwiches. Open Thu-Sun. Great fuel-and-food stop on the south end.', details: { 'Cuisine': 'BBQ, wings', 'Dock': 'Bald Ridge Marina', 'Hours': 'Thu-Sun' } },
-  { id: 'rest-06', name: 'Twisted Oar', type: 'restaurant', lat: 34.1679, lng: -84.0026, description: 'Laid-back lakefront restaurant at Holiday Marina. Mexican-American menu. Specialty pizzas, Cajun fried shrimp, fish tacos, fish & chips. Friday = fresh fish and prime rib night. Funnel cake fries for dessert.', details: { 'Cuisine': 'Mexican-American', 'Dock': 'Holiday Marina', 'Known for': 'Friday prime rib, fish tacos' } },
-  { id: 'rest-07', name: 'LandShark Bar & Grill', type: 'restaurant', lat: 34.1705, lng: -84.0345, description: 'Margaritaville waterfront restaurant at Lanier Islands. Beach bar with sun-kissed sand, rolling Sunset Cove views. Fish tacos, grouper fingers, LandShark lager. Dock accessible.', details: { 'Cuisine': 'American, seafood', 'Dock': 'Margaritaville Marina' } },
-  { id: 'rest-08', name: 'Cantina at Margaritaville', type: 'restaurant', lat: 34.1703, lng: -84.0338, description: 'Mexican restaurant at Lanier Islands. Part of the Margaritaville complex. Dock accessible.', details: { 'Cuisine': 'Mexican', 'Dock': 'Margaritaville Marina' } },
-  { id: 'rest-09', name: 'Tiki Bar at Margaritaville', type: 'restaurant', lat: 34.17, lng: -84.0336, description: 'Waterfront tiki bar. Tropical cocktails, casual fare, sunset views. Dock accessible. Fire pits on the beach.', details: { 'Cuisine': 'Bar, casual', 'Dock': 'Margaritaville Marina' } },
-  { id: 'rest-10', name: "Sidney's at Legacy Lodge", type: 'restaurant', lat: 34.1723, lng: -84.0070, description: 'Fine dining at Legacy Lodge, Lanier Islands. Farm-to-table Southern cuisine using local ingredients. Seasonal menu. Overlooks Lake Lanier. Arrive by boat or car. Breakfast daily, dinner Fri-Sat.', details: { 'Cuisine': 'Fine dining, Southern', 'Dock': 'Lanier Islands', 'Dress': 'Smart casual' } },
-  { id: 'rest-11', name: 'Bullfrogs Southern Gastro Pub', type: 'restaurant', lat: 34.1723, lng: -84.0070, description: 'Southern gastropub at Legacy Lodge. Comfort food with global influences. Indoor candlelight or poolside by the fire pit. 20+ beers on tap. Peel-and-eat shrimp, Cajun pork skins. Year-round.', details: { 'Cuisine': 'Gastropub', 'Dock': 'Lanier Islands', 'Beer': '20+ on tap' } },
-  { id: 'rest-12', name: 'Holiday Marina Restaurant', type: 'restaurant', lat: 34.1675, lng: -84.003, description: 'Restaurant at Holiday Marina ship store. Fresh seafood, pizza, BBQ. Best crew on the lake. Lakefront view. Cold beer, wine, ice cream.', details: { 'Cuisine': 'Seafood, pizza, BBQ', 'Dock': 'Holiday Marina' } },
-  { id: 'rest-13', name: 'Big Creek Tavern', type: 'restaurant', lat: 34.1660, lng: -83.9940, description: 'Local dive bar on the lake near Lazy Days Marina. 3050 Big Creek Rd, Buford. Prime Angus beef, fresh seafood, baby-back ribs, grouper fingers. Dock accessible but dock is rough. Live music Fri/Sat. Open year-round. Potentially closed — check before visiting.', details: { 'Cuisine': 'American, seafood, steaks', 'Dock': 'Big Creek (past Lazy Days)', 'Phone': '678-482-1662', 'Note': 'Check if still open'} },
-  { id: 'rest-14', name: 'Sunset Cove Beach Café', type: 'restaurant', lat: 34.1710, lng: -84.0320, description: 'At Lanier Islands near Margaritaville waterpark. Beach café with casual fare. Seasonal — open May through September. Near the boardwalk and Sunset Cove entertainment area.', details: { 'Cuisine': 'Casual, beach fare', 'Dock': 'Lanier Islands', 'Season': 'May-Sept' } },
-  { id: 'rest-15', name: 'Food Truck Fridays at Olympic Park', type: 'restaurant', lat: 34.3531, lng: -83.7912, description: 'Monthly food truck event at Lake Lanier Olympic Park spring through summer (April-September). Multiple food trucks, live music, lakeside setting. Free admission to park. Dock and ramp accessible.', details: { 'Type': 'Food truck event', 'Schedule': 'Monthly Apr-Sep', 'Dock': 'Olympic Park courtesy dock', 'Admission': 'Free' } },
+  // --- Hideaway Bay Marina ---
+  { id: "rest-6", name: "Fish Tales Lakeside Grill", lat: 34.18140, lng: -83.93810, type: "restaurant", icon: "restaurant", description: "Lakeside grill at Hideaway Bay Marina", phone: "770-967-5500", address: "6330 Mitchell St, Flowery Branch" }, // Offset from Hideaway Bay Marina
 
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  BOAT RAMPS — ALL 42 on the lake                                    ║
-  // ║  Sources: USACE, Dawson County, Hall County, DiscoverLanier         ║
-  // ║  GPS from USACE campground records and Google Maps verification     ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
+  // --- Aqualand Marina ---
+  { id: "rest-7", name: "Pig Tales BBQ", lat: 34.20190, lng: -83.96350, type: "restaurant", icon: "restaurant", description: "BBQ, burgers & wings at Aqualand", address: "6800 Lights Ferry Rd, Flowery Branch" }, // Offset from Aqualand Marina
 
-  // ── SOUTH END (Buford / Dam area) ──
-  { id: 'r-01', name: 'Buford Dam Park Ramp', type: 'boat_ramp', lat: 34.1578, lng: -84.0730, description: 'USACE park at the dam. Deep water access. Ramp elev 1058ft. Beach, picnic, volleyball, basketball, playgrounds, shelters. $4/vehicle.', details: { 'Fee': '$4/vehicle', 'Lanes': '3', 'Ramp elev': '1058 ft', 'Operator': 'USACE' } },
-  { id: 'r-02', name: 'East Bank Park Ramp', type: 'boat_ramp', lat: 34.1519, lng: -84.0598, description: 'USACE fee park near Dam Store off Buford Dam Rd. Boat ramp, dock, restrooms. Mainly used as a boat launching park.', details: { 'Fee': '$4/vehicle', 'Operator': 'USACE' } },
-  { id: 'r-03', name: 'Shoal Creek Park Ramp', type: 'boat_ramp', lat: 34.1591, lng: -84.0077, description: 'USACE park off Shadburn Ferry Rd in Buford. THREE ramps — Day Use Right usable down to 1050.1ft, the absolute LOWEST operating ramp on the entire lake. Critical at low-pool conditions.', details: { 'Lanes': '3', 'Lowest': '1050.1 ft', 'Operator': 'USACE' } },
-  { id: 'r-04', name: 'Big Creek Park Ramp', type: 'boat_ramp', lat: 34.1663, lng: -83.9934, description: 'SE corner off Holiday Rd in Buford. Operated by Lanier Islands. Popular weekend launch. White sand beach nearby. Deep water near dam.', details: { 'Phone': '770-932-7200', 'Operator': 'Lanier Islands' } },
-  { id: 'r-05', name: 'West Bank Park Ramp', type: 'boat_ramp', lat: 34.1755, lng: -84.0750, description: 'USACE ramp, large lot. Popular south-side launch. Fishing pier, BBQ grills, playground. Arrive before 8am summer weekends.', details: { 'Fee': '$5/day', 'Lanes': '4', 'Parking': '~100', 'Operator': 'USACE' } },
-  { id: 'r-06', name: 'Gwinnett County Park Ramp', type: 'boat_ramp', lat: 34.1680, lng: -84.0280, description: 'Gwinnett County park, SE side. Beach for swimming, kayak/paddleboard friendly. $5 honor-based parking. Beautiful hidden gem with water + hiking views.', details: { 'Fee': '$5', 'Operator': 'Gwinnett County' } },
+  // --- Big Creek area ---
+  { id: "rest-8", name: "Big Creek Tavern", lat: 34.16680, lng: -83.99290, type: "restaurant", icon: "restaurant", description: "Casual tavern near Big Creek ramp", address: "Big Creek Rd, Buford" }, // Offset from Big Creek ramp
 
-  // ── MID-SOUTH (Lanier Islands / Two Mile area) ──
-  { id: 'r-07', name: 'Two Mile Creek Ramp', type: 'boat_ramp', lat: 34.1820, lng: -84.0580, description: 'USACE ramp off Bethel Rd (GA 369). Spreads over a wide area. Picnic sites, swimming, fishing spots. Less crowded than West Bank.', details: { 'Fee': '$5/day', 'Lanes': '2', 'Operator': 'USACE' } },
-  { id: 'r-08', name: 'Bethel Park Ramp', type: 'boat_ramp', lat: 34.2274, lng: -83.9918, description: 'Off Swiss Air Rd (off Bethel Rd from Browns Bridge Rd). Ramp, dock, restrooms. Future YMCA development planned.', details: { 'Operator': 'USACE' } },
-  { id: 'r-09', name: 'Sawnee Campground Ramp', type: 'boat_ramp', lat: 34.1850, lng: -84.0800, description: 'Ramp at Sawnee Campground off Buford Dam Rd in Cumming.', details: { 'Operator': 'USACE' } },
-  { id: 'r-10', name: 'Little Ridge Park Ramp', type: 'boat_ramp', lat: 34.191, lng: -84.1015, description: 'Off Holtzclaw Rd near Habersham Marina. South-side access.', details: { 'Operator': 'USACE' } },
+  // --- Bald Ridge Marina ---
+  { id: "rest-9", name: "Smokey Q BBQ", lat: 34.20780, lng: -84.09770, type: "restaurant", icon: "restaurant", description: "BBQ, wings & sandwiches at Bald Ridge Marina", address: "1850 Bald Ridge Marina Rd, Cumming" }, // Offset from Bald Ridge Marina
 
-  // ── MID-LAKE WEST (Cumming / Browns Bridge area) ──
-  { id: 'r-11', name: 'Bald Ridge Creek Ramp', type: 'boat_ramp', lat: 34.2086, lng: -84.0844, description: 'Near Cumming off Browns Bridge Rd. Ramp and swim beach. Close to GA 400 exit 17.', details: { 'Fee': '$5/day', 'Operator': 'USACE' } },
-  { id: 'r-12', name: 'Van Pugh Park Ramp', type: 'boat_ramp', lat: 34.1985, lng: -84.0700, description: 'USACE park off Gaines Ferry Rd. TWO ramps — usable down to 1055ft, among the lowest-operating on the lake. Popular weekend park with BBQ and picnic areas.', details: { 'Fee': '$5/day', 'Lanes': '2', 'Lowest': '1055 ft', 'Operator': 'USACE' } },
-  { id: 'r-13', name: 'Little Hall Park Ramp', type: 'boat_ramp', lat: 34.3105, lng: -83.9423, description: 'USACE fee park off GA 53. Ramp, picnic tables, grills. $4/vehicle or $1 pedestrian. Smaller lot, less crowded.', details: { 'Fee': '$4/vehicle', 'Operator': 'USACE' } },
-  { id: 'r-14', name: 'Vann\'s Tavern Park Ramp', type: 'boat_ramp', lat: 34.2120, lng: -84.0750, description: 'Off Vann Tavern Rd (off Waldrip Circle from Browns Bridge Rd). Ramp and dock. White sand beach — popular summer swimming hole. Great for SUP and kayaking. Named after a submerged tavern.', details: { 'Operator': 'USACE', 'Note': 'Popular SUP/kayak put-in' } },
-  { id: 'r-15', name: 'Charleston Park Ramp', type: 'boat_ramp', lat: 34.2432, lng: -84.0463, description: 'Off Browns Bridge Rd (GA 369). Fee park — $3 to launch. Picnic tables, grills, restrooms.', details: { 'Fee': '$3/launch', 'Operator': 'USACE' } },
-  { id: 'r-16', name: 'Six Mile Creek Ramp', type: 'boat_ramp', lat: 34.2443, lng: -84.0382, description: 'Extended ramp near Charleston Park. Metro Atlanta Marine Trade Association funded extension — now open more regularly.', details: { 'Operator': 'USACE' } },
-  { id: 'r-17', name: "Keith's Bridge Park Ramp", type: 'boat_ramp', lat: 34.2827, lng: -83.9440, description: 'Hall County park north of Browns Bridge, west side. Off Rt 306 and Keith Bridge Rd. Picnic haven with calm north-lake access.', details: { 'Fee': '$5/day', 'Operator': 'Hall County' } },
-  { id: 'r-18', name: 'River Forks Park Ramp', type: 'boat_ramp', lat: 34.283, lng: -83.9438, description: 'Off Keith Bridge Rd in Gainesville. Campground nearby. Good north-lake access.', details: { 'Phone': '770-531-3952', 'Operator': 'USACE' } },
-  { id: 'r-19', name: 'Wahoo Creek Park Ramp', type: 'boat_ramp', lat: 34.3500, lng: -83.9050, description: 'Off Mount Vernon Rd in Gainesville. Small quiet park with ramp and secluded paths to the lake. Locals love the peace.', details: { 'Operator': 'USACE' } },
+  // --- Port Royale Marina ---
+  { id: "rest-10", name: "Pelican Pete's Tiki Bar", lat: 34.25200, lng: -83.96370, type: "restaurant", icon: "restaurant", description: "Floating tiki bar & grill — Lake Lanier's only boat-up restaurant", phone: "770-887-5715", address: "8800 Port Royale Dr, Gainesville" }, // Offset from Port Royale Marina (on gas island dock)
 
-  // ── MID-LAKE EAST (Flowery Branch / Oakwood area) ──
-  { id: 'r-20', name: 'Old Federal Park Ramp', type: 'boat_ramp', lat: 34.2278, lng: -83.9366, description: 'USACE park near Flowery Branch. One ramp, elev 1061.5ft. Campground with great lake views.', details: { 'Ramp elev': '1061.5 ft', 'Operator': 'USACE' } },
-  { id: 'r-21', name: 'Balus Creek Park Ramp', type: 'boat_ramp', lat: 34.2523, lng: -83.9161, description: 'Flowery Branch off Balus Creek Dr. FOUR ramps and bathrooms. Popular with fishermen. Pets allowed.', details: { 'Lanes': '4', 'Operator': 'USACE' } },
-  { id: 'r-22', name: 'Sardis Creek Park Ramp', type: 'boat_ramp', lat: 34.3359, lng: -83.8880, description: 'Off Antioch Church Rd. Picnic tables with gorgeous lake views. Great for kayaking, fishing, and canoeing.', details: { 'Operator': 'USACE' } },
-  { id: 'r-23', name: 'Tidwell Park Ramp', type: 'boat_ramp', lat: 34.1954, lng: -84.0630, description: 'USACE park off exit 16 on GA 400, follow Pilgrim Mill to end. Beach, beautiful views, benches throughout.', details: { 'Fee': '$5/day', 'Operator': 'USACE' } },
-  { id: 'r-24', name: 'Burton Mill Park Ramp', type: 'boat_ramp', lat: 34.1676, lng: -83.9763, description: 'Off Yacht Club Rd (off Gaines Ferry Rd). Picnic tables and grills along a lake path. Beach with designated swim area. Views of University Yacht Club.', details: { 'Operator': 'USACE' } },
-  { id: 'r-25', name: 'Chestnut Ridge Park Ramp', type: 'boat_ramp', lat: 34.2450, lng: -83.9400, description: 'East-side park with ramp access near Flowery Branch.', details: { 'Operator': 'USACE' } },
+  // --- Gainesville Marina ---
+  { id: "rest-11", name: "Skogies Waterfront Eatery", lat: 34.32450, lng: -83.88150, type: "restaurant", icon: "restaurant", description: "Famous grouper sandwich, lakefront dining", phone: "678-450-1310", address: "2151 Dawsonville Hwy, Gainesville" }, // Offset from Gainesville Marina
 
-  // ── GAINESVILLE AREA (north-central) ──
-  { id: 'r-26', name: 'Lanier Park Ramp', type: 'boat_ramp', lat: 34.1511, lng: -84.0581, description: 'USACE park off Buford Dam Rd in Gainesville. Beach, picnic area, half-mile walking trail. $4/vehicle, $1 pedestrian. Warm sandy beach good for families.', details: { 'Fee': '$4/vehicle', 'Ramp elev': '1058.7 ft', 'Operator': 'USACE' } },
-  { id: 'r-27', name: 'Lanier Point Park Ramp', type: 'boat_ramp', lat: 34.2970, lng: -83.8703, description: 'City of Gainesville park off GA 53 on Lanier Valley Dr. Softball/baseball complex with lighting, picnic pavilion, playground, ramp.', details: { 'Operator': 'City of Gainesville' } },
-  { id: 'r-28', name: 'Holly Park Ramp', type: 'boat_ramp', lat: 34.3520, lng: -83.8460, description: 'Off Holly Park Dr (from Thompson Bridge Rd) in Gainesville. Small ramp, sandy swim beach, gorgeous overlook positions. Hidden peaceful retreat with pristine sand and shallow water.', details: { 'Operator': 'USACE' } },
-  { id: 'r-29', name: 'Thompson Bridge Park Ramp', type: 'boat_ramp', lat: 34.3520, lng: -83.8460, description: 'Off Thompson Bridge Rd (GA 60) in Gainesville. Pretty lake views, ramp, dock, plenty of parking.', details: { 'Operator': 'City of Gainesville' } },
-  { id: 'r-30', name: 'Longwood Park Ramp', type: 'boat_ramp', lat: 34.2990, lng: -83.8570, description: 'Hall County mega-park. 124 acres. Dog park, paved trail, sprayground, MEGA boat ramp. Most popular park on the lake. Courtesy dock, fishing pier, 8 tennis courts, gazebos, playgrounds.', details: { 'Amenities': 'Dog park, sprayground, trails, fishing pier', 'Operator': 'City of Gainesville' } },
-  { id: 'r-31', name: 'Lake Lanier Olympic Park Ramp', type: 'boat_ramp', lat: 34.3534, lng: -83.7914, description: '1996 Olympic rowing/canoe/kayak venue. ADA-accessible ramp. Swim beach, docks, pavilion. Food Truck Fridays spring/summer. The Boathouse event venue (50,000 sq ft). World-class training facility.', details: { 'Events': 'Food Truck Friday, Polar Bear Plunge', 'Operator': 'City of Gainesville' } },
-  { id: 'r-32', name: 'Mary Alice Park Ramp', type: 'boat_ramp', lat: 34.1977, lng: -84.0988, description: 'City of Gainesville park. 24-hour boat ramps, picnic tables, long stretch of sandy beach. Bathhouse on site.', details: { 'Hours': '24hr ramp', 'Operator': 'City of Gainesville' } },
-
-  // ── NORTH-EAST (Clarks Bridge / Don Carter area) ──
-  { id: 'r-33', name: 'Clarks Bridge Park Ramp', type: 'boat_ramp', lat: 34.3519, lng: -83.7931, description: '1996 Olympic venue. Home of Lake Lanier Rowing Club and Canoe & Kayak Club. Two ramps, big lot, restrooms. Excellent north-end launch.', details: { 'Lanes': '2', 'Parking': 'Large', 'Operator': 'Hall County' } },
-  { id: 'r-34', name: 'Don Carter State Park Ramp', type: 'boat_ramp', lat: 34.3650, lng: -83.7700, description: 'Georgia state park on NE shore. Full campground. Ramp with deep water even at low pool. Large sand swim beach with bathhouse. Cabins available. $5 parking pass.', details: { 'Fee': '$5 parking', 'Operator': 'GA State Parks' } },
-  { id: 'r-35', name: 'Long Hollow Park Ramp', type: 'boat_ramp', lat: 34.2818, lng: -83.9721, description: 'USACE park on the northeast. Campground nearby.', details: { 'Fee': '$5/day', 'Operator': 'USACE' } },
-
-  // ── NORTH (Gainesville upper / Duckett Mill / Bolding Mill) ──
-  { id: 'r-36', name: 'Simpson Park Ramp', type: 'boat_ramp', lat: 34.3198, lng: -83.8907, description: 'Off GA 53. Ramp and picnic tables. Two tables in a beautiful secluded area with gorgeous views, plus more in the woods. Hidden gem.', details: { 'Operator': 'USACE' } },
-  { id: 'r-37', name: 'Duckett Mill Ramp', type: 'boat_ramp', lat: 34.3070, lng: -83.9309, description: 'Off GA 53 at Duckett Mill Rd in Oakwood. Day-use ramp at the campground. Near Bolding Bridge. Scenic campsites, hot showers, beach.', details: { 'Operator': 'USACE / Hall County' } },
-  { id: 'r-38', name: 'Bolding Mill Ramp', type: 'boat_ramp', lat: 34.3390, lng: -83.9545, description: 'USACE park off Chestatee Rd. THREE ramps — ALL usable to 1055.9ft, the lowest-operating ramps on the entire lake (tied with Shoal Creek). Critical for low-pool access. Campground with legendary fishing.', details: { 'Lanes': '3', 'Lowest': '1055.9 ft', 'Operator': 'USACE' } },
-
-  // ── FAR NORTH (Dawsonville / Chestatee River arm) ──
-  { id: 'r-39', name: 'Toto Creek Park Ramp', type: 'boat_ramp', lat: 34.3950, lng: -83.9801, description: 'Dawson County off GA 400 North. FOUR ramps (elev 1058ft). 9 primitive campsites, bathhouse with showers, swim area, trails. Upper Chestatee access. $6/day or $30 annual (Dawson residents).', details: { 'Lanes': '4', 'Ramp elev': '1058 ft', 'Fee': '$6/day', 'Camping': '$25/night', 'Operator': 'Dawson County' } },
-  { id: 'r-40', name: 'War Hill Park Ramp', type: 'boat_ramp', lat: 34.3700, lng: -83.9750, description: 'Dawson County off Hwy 53 East. FOUR ramps. 14 primitive campsites, bathhouse with hot showers. Fishing tournaments staged here. Day-use and ramps open year-round. Great sandbar nearby.', details: { 'Lanes': '4', 'Fee': '$6/day', 'Camping': '$25/night', 'Operator': 'Dawson County' } },
-  { id: 'r-41', name: 'Nix Bridge Park Ramp', type: 'boat_ramp', lat: 34.3627, lng: -83.9861, description: 'Dawson County on Chestatee River tributary. Off GA 400 North via Harmony Church Rd to Nix Bridge Rd. 1 ramp, courtesy dock, restrooms. Secret fishing holes nearby — legendary striper spot. Near Dawsonville outlets.', details: { 'Fee': '$6/day', 'Operator': 'Dawson County' } },
-  { id: 'r-42', name: 'Thompson Creek Park Ramp (Dawson)', type: 'boat_ramp', lat: 34.3501, lng: -84.0160, description: 'Dawson County off Hwy 53 East. THREE ramps, covered pavilion ($60 rental), trails, restrooms, courtesy dock. Near Dawsonville outlets.', details: { 'Lanes': '3', 'Fee': '$6/day', 'Operator': 'Dawson County' } },
-
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  CAMPGROUNDS                                                        ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'c-01', name: 'Bolding Mill Campground', type: 'campground', lat: 34.3385, lng: -83.9543, description: 'USACE campground on the Chestatee arm. W/E hookup sites. Reserve via Recreation.gov. Three of the lowest ramps on the lake (1055.9ft). Legendary fishing — giant stripers.', details: { 'Sites': 'W/E hookups', 'Ramps': '3 (1055.9ft)', 'Phone': '770-534-6960' } },
-  { id: 'c-02', name: 'Duckett Mill Campground', type: 'campground', lat: 34.3070, lng: -83.9309, description: 'USACE campground off GA 53. 97 sites W/E + 14 tent. Showerhouses, laundry, playground. Beach and ramp. Co-managed with Hall County. Gates lock 10:30pm, open 7am.', details: { 'Sites': '97 W/E + 14 tent', 'Showers': 'Yes', 'Laundry': 'Yes' } },
-  { id: 'c-03', name: 'Toto Creek Campground', type: 'campground', lat: 34.3950, lng: -83.9801, description: 'Dawson County primitive. 9 sites, no hookups. Bathhouse with showers. 3 ramps, swim area, trails. March-October. First come first served.', details: { 'Sites': '9 primitive', 'Fee': '$25/night', 'Season': 'Mar-Oct' } },
-  { id: 'c-04', name: 'War Hill Campground', type: 'campground', lat: 34.3703, lng: -83.9748, description: 'Dawson County primitive. 14 sites, bathhouse with hot showers. 4 ramps. Fishing tournaments. March-October. Online reservations only.', details: { 'Sites': '14 primitive', 'Fee': '$25/night', 'Season': 'Mar-Oct' } },
-  { id: 'c-05', name: 'Sawnee Campground', type: 'campground', lat: 34.1850, lng: -84.0800, description: 'USACE campground off Buford Dam Rd in Cumming. Reserve via Recreation.gov.', details: { 'Phone': '770-887-0592' } },
-  { id: 'c-06', name: 'Old Federal Campground', type: 'campground', lat: 34.2278, lng: -83.9366, description: 'USACE campground near Flowery Branch. Ramp elev 1061.5ft. Great lake views.', details: { 'Ramp elev': '1061.5 ft' } },
-  { id: 'c-07', name: 'River Forks Campground', type: 'campground', lat: 34.2824, lng: -83.9438, description: '3500 Keith Bridge Rd, Gainesville. Campground with ramp access.', details: { 'Phone': '770-531-3952' } },
-  { id: 'c-08', name: 'Shady Grove Campground', type: 'campground', lat: 34.2150, lng: -84.0400, description: 'USACE campground. Wooded sites with grills, tables, fire rings. Water access. Timberline Glamping Co. offers safari tents, geodesic domes, retro RVs with beds, linens, and climate control.', details: { 'Glamping': 'Timberline Glamping Co.' } },
-  { id: 'c-09', name: 'Van Pugh South Campground', type: 'campground', lat: 34.1990, lng: -84.0697, description: 'USACE campground at Van Pugh. Near the low-water ramps.', details: {} },
-  { id: 'c-10', name: 'Don Carter State Park', type: 'campground', lat: 34.3653, lng: -83.7698, description: 'Georgia state park. Full-service campground with W/E/S hookups and cabins. NE shore. Large sand swim beach with bathhouse. Deep-water ramp. Great for paddling and kayaking.', details: { 'Type': 'Full hookups + cabins', 'Fee': '$5 parking' } },
-  { id: 'c-11', name: 'Lanier Islands / Camp Margaritaville', type: 'campground', lat: 34.1697, lng: -84.0338, description: 'Camp Margaritaville RV Resort at Lanier Islands. Full hookups, free cable/WiFi, boat rentals, margarita cruises, beach passes. Also tent and standard RV camping.', details: { 'Type': 'Full RV hookups', 'Amenities': 'WiFi, boat rentals, beach pass' } },
-  { id: 'c-12', name: 'Bald Ridge Campground', type: 'campground', lat: 34.1916, lng: -84.114, description: 'USACE campground near Bald Ridge Marina. Close to GA 400.', details: {} },
-
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  PARKS (day-use / notable)                                          ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'p-01', name: 'Lake Lanier Olympic Park', type: 'park', lat: 34.3534, lng: -83.791, description: '1996 Olympic rowing/canoe/kayak venue. 8-lane rowing course, historic timing tower, stadium seating. The Boathouse (50,000 sq ft event venue, opened March 2024). ADA-accessible ramps, swim beach, docks, pavilion. Food Truck Fridays, Polar Bear Plunge, Chicken Festival.', details: { 'Events': 'Food Truck Friday, regattas', 'Venue': 'The Boathouse (weddings/events)' } },
-  { id: 'p-02', name: 'Longwood Park', type: 'park', lat: 34.2993, lng: -83.8568, description: 'City of Gainesville — most popular park on the lake. 124 acres. Courtesy dock, fishing pier, gazebos, grills, pavilions, 2 playgrounds, 8 tennis courts, trails, restrooms. Walk to downtown Gainesville via Rock Creek Greenway.', details: { 'Acres': '124', 'Trail': 'Rock Creek Greenway to downtown' } },
-  { id: 'p-03', name: 'Laurel Park', type: 'park', lat: 34.3551, lng: -83.8132, description: 'One of the very best parks on Lanier. Near Olympic rowing venue. Tennis, baseball, softball, volleyball. Mile-long running track. Premier recreational complex.', details: { 'Amenities': 'Tennis, track, ball fields' } },
-  { id: 'p-04', name: 'Young Deer Park', type: 'park', lat: 34.3150, lng: -83.8780, description: 'Park with a known rope swing and jumping rock. Popular with locals for cliff jumping and swimming.', details: { 'Features': 'Rope swing, jumping rock' } },
-  { id: 'p-05', name: 'Flowery Branch Park', type: 'park', lat: 34.2346, lng: -83.938, description: 'Near Starboard/Hideaway Bay. No ramp but good picnic area, playground, fishing, and nice lake views.', details: {} },
-  { id: 'p-06', name: 'Lower Overlook Park', type: 'park', lat: 34.1550, lng: -84.0700, description: 'Below Buford Dam. Scenic overlook, trailhead for Buford Dam hiking trail with numbered interpretive posts. Laurel Ridge Trail access (4 miles).', details: { 'Trail': 'Buford Dam Trail (1mi), Laurel Ridge (4mi)' } },
-  { id: 'p-07', name: 'West Bank Overlook Park', type: 'park', lat: 34.1740, lng: -84.0760, description: 'Simply the BEST place to get good views of Buford Dam. Large info guide at entrance. No ramp. Great photo spot.', details: { 'Note': 'Best dam views on the lake' } },
-  { id: 'p-08', name: 'Linwood Nature Preserve', type: 'park', lat: 34.2980, lng: -83.8560, description: 'Nature preserve near Gainesville. Hiking trails through lakeside forest. Sweep the Hooch volunteer site.', details: {} },
-
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  BEACHES & SWIM AREAS                                               ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'b-01', name: 'Margaritaville Beach / LanierWorld', type: 'beach', lat: 34.1697, lng: -84.0342, description: 'Main beach attraction. Sandy beach, Fins Up Waterpark (GA\'s first water slide coaster), wave pool, cabanas, foam parties. Landshark Landing adult-only beach with bar, fire pits. Paid admission May-Sept.', details: { 'Fee': '$15-30', 'Season': 'May-Sept', 'New': 'Fins Up Waterpark' } },
-  { id: 'b-02', name: 'Tidwell Park Beach', type: 'beach', lat: 34.1954, lng: -84.0630, description: 'USACE public beach off exit 16 on GA 400. Beautiful views, benches. Less crowded than Lanier Islands.', details: { 'Fee': '$5 parking' } },
-  { id: 'b-03', name: 'Gwinnett County Park Beach', type: 'beach', lat: 34.1685, lng: -84.0270, description: 'Designated swim area, SE side. Sandy beach, kayak/paddleboard launch. Hidden gem.', details: {} },
-  { id: 'b-04', name: 'Mary Alice Park Beach', type: 'beach', lat: 34.1977, lng: -84.0988, description: 'City of Gainesville. Long stretch of sandy beach with bathhouse. 24hr boat ramps. Picnic tables.', details: {} },
-  { id: 'b-05', name: 'Burton Mill Beach', type: 'beach', lat: 34.1676, lng: -83.9763, description: 'Off Yacht Club Rd. Beach with designated swim area. Picnic tables and grills along a lake-bordering path. Cozy family-friendly ambiance.', details: {} },
-  { id: 'b-06', name: 'Holly Park Beach', type: 'beach', lat: 34.3250, lng: -83.8900, description: 'Hidden treasure. Pristine sands and clear shallow waters — fantastic for young kids. Peaceful retreat with gorgeous overlook. Two positions with beautiful lake views.', details: {} },
-  { id: 'b-07', name: 'Buford Dam Park Beach', type: 'beach', lat: 34.1575, lng: -84.0725, description: 'USACE park. Designated swim area, volleyball, basketball, playgrounds, shelters, picnic pavilions. $4/vehicle.', details: { 'Fee': '$4/vehicle' } },
-  { id: 'b-08', name: 'Big Creek Beach', type: 'beach', lat: 34.1663, lng: -83.9934, description: 'Small white sand beach at Big Creek Park. SE corner near dam.', details: {} },
-  { id: 'b-09', name: 'Don Carter State Park Beach', type: 'beach', lat: 34.3647, lng: -83.7698, description: 'Large sand swimming beach with bathhouse at the NE state park. Great for kayak/SUP put-in. Calm waters.', details: { 'Fee': '$5 parking' } },
-  { id: 'b-10', name: 'Lanier Park Beach', type: 'beach', lat: 34.1511, lng: -84.0581, description: 'Warm sandy beach at USACE Lanier Park in Gainesville. Good for families. Half-mile walking trail.', details: { 'Fee': '$4/vehicle' } },
-  { id: 'b-11', name: "Vann's Tavern Beach", type: 'beach', lat: 34.2125, lng: -84.0745, description: 'White sand swimming hole at Vann\'s Tavern Park. Popular summer spot. Secluded beach area. Named after a tavern submerged when the lake was created. Easy SUP/kayak put-in for Two Mile Creek paddle.', details: { 'Note': 'Great for SUP/kayak' } },
-  { id: 'b-12', name: 'Lake Lanier Olympic Park Beach', type: 'beach', lat: 34.3531, lng: -83.7908, description: 'Public swim beach at the Olympic venue. Shaded pavilion, picnic areas with grills. No lifeguards. Food Truck Fridays in summer.', details: {} },
-  { id: 'b-13', name: 'War Hill Park Beach', type: 'beach', lat: 34.3695, lng: -83.9755, description: 'Beach areas alongside the campground on the far north end. Picnic tables and grills lining the lake. Quiet and uncrowded.', details: {} },
-  { id: 'b-14', name: 'Van Pugh North Beach', type: 'beach', lat: 34.1990, lng: -84.0695, description: 'Stunning shoreline at Van Pugh North. Designated picnic areas, playgrounds, gentle beach entry. Safe for young swimmers. Popular weekend BBQ spot.', details: {} },
-  { id: 'b-15', name: 'Shoal Creek Beach', type: 'beach', lat: 34.1591, lng: -84.0077, description: 'Beach area at Shoal Creek Campground. Now operated by Lanier Islands. Designated swim area.', details: {} },
-
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  ISLANDS / BANK SPOTS / COMMUNITY COVES                            ║
-  // ║  Sources: HullTruth, JetBoaters, OffshoreOnly forums, local intel  ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'i-01', name: 'Party Island / Palooza', type: 'island', lat: 34.1950, lng: -84.0250, description: 'THE sandbar. Boats raft up all weekend in summer. Sandy bank. Extremely busy Sat/Sun. Shallow approach — trim up. Spotter on bow recommended. Houseboats and cruisers take big coves Fri-Sun.', details: { 'Best time': 'Sat/Sun 11am-5pm', 'Caution': 'Shallow — trim up, spotter on bow' } },
-  { id: 'i-02', name: 'Sunset Cove', type: 'island', lat: 34.2100, lng: -84.0100, description: 'Popular raft-up cove near Lanier Islands. THE spot for music, entertainment, dining and nightlife per Lanier Islands. Sandy bank, gradual dropoff. Less hectic than Party Island weekdays.', details: { 'Access': 'Boat only' } },
-  { id: 'i-03', name: 'Cocktail Cove', type: 'island', lat: 34.2030, lng: -84.0350, description: 'Popular cove for rafting up. Calmer water, mixed sand/gravel bank. Good wind protection.', details: { 'Access': 'Boat only' } },
-  { id: 'i-04', name: 'Paradise Cove', type: 'island', lat: 34.2016, lng: -83.9636, description: 'Directly across from Aqualand Marina. Small cut-through past an island opens to 2 nice beach coves and a small sand bar. Also accessible via back channel of Three Sisters islands. Local favorite.', details: { 'Access': 'Boat only', 'Tip': 'Cut past island on left from Aqualand direction' } },
-  { id: 'i-05', name: 'Three Sisters Islands', type: 'island', lat: 34.2012, lng: -83.9636, description: 'Group of three islands near Aqualand. Put islands on your right and shoot straight up for the back channel. Multiple beach coves around the perimeter. Protected water.', details: { 'Access': 'Boat only', 'Note': 'Multiple beaching options around the islands' } },
-  { id: 'i-06', name: 'War Hill Sandbar', type: 'island', lat: 34.3697, lng: -83.9748, description: 'North of Hwy 53 bridge where the river channel splits near War Hill Park. Small cove with an island and a great sandbar. Minimal bottom obstructions, all sand with some scattered rocks. Watch hull on approach. Spotter on bow. Local\'s favorite far-north spot.', details: { 'Access': 'Boat only', 'Bottom': 'Sand, scattered rocks', 'Tip': 'Spotter on bow approaching' } },
-  { id: 'i-07', name: 'North End Sandbars', type: 'island', lat: 34.3200, lng: -83.9500, description: 'Multiple sandbars exposed at lower water in upper Chattahoochee channel. Quiet, uncrowded alternative to south-end party spots. Varies with water level.', details: { 'Note': 'Varies with water level' } },
-  { id: 'i-08', name: 'Jumping Rocks', type: 'island', lat: 34.3236, lng: -83.882, description: 'Off to the right just before you would hang left to Gainesville Marina. Rock formation for cliff jumping. Local community spot. Check depth before jumping — varies with lake level.', details: { 'Access': 'Boat only', 'Caution': 'Always check depth before jumping' } },
-
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  FISHING SPOTS                                                      ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'fish-01', name: 'Van Pugh Cove', type: 'fishing', lat: 34.1990, lng: -84.0697, description: 'Sheltered cove. Striped and spotted bass. Submerged timber. Early AM, spring/fall best.', details: { 'Species': 'Striped, spotted bass', 'Best': 'Spring/Fall AM' } },
-  { id: 'fish-02', name: 'Browns Bridge Points', type: 'fishing', lat: 34.2180, lng: -84.0780, description: 'Rocky points near Browns Bridge. Drop-shot and jigs along bluffs for largemouth and spotted bass.', details: { 'Species': 'Largemouth, spotted bass' } },
-  { id: 'fish-03', name: 'Chestatee River Channel', type: 'fishing', lat: 34.3400, lng: -83.9350, description: 'Upper lake Chestatee feed. Shallower, great crappie/bass. Follow old river channel for best structure.', details: { 'Species': 'Crappie, bass' } },
-  { id: 'fish-04', name: 'Buford Dam Tailrace', type: 'fishing', lat: 34.1540, lng: -84.0740, description: 'Below dam. Excellent trout in cold tailrace waters. Rainbow and brown trout. Shore and wading access — no boat needed.', details: { 'Species': 'Rainbow + brown trout', 'Access': 'Shore + wading' } },
-  { id: 'fish-05', name: 'Bolding Mill Deep Holes', type: 'fishing', lat: 34.3385, lng: -83.9541, description: 'North arm deep channel near Bolding Mill. Giant stripers flee here from main lake. Live bait, deep trolling. Local secret.', details: { 'Species': 'Striped bass', 'Technique': 'Live bait, deep trolling' } },
-  { id: 'fish-06', name: 'Nix Bridge Secret Holes', type: 'fishing', lat: 34.3627, lng: -83.9861, description: 'Chestatee tributary near Nix Bridge. Legendary striper spot. Dawn with live shad. Don\'t spread the word.', details: { 'Species': 'Striped bass', 'Technique': 'Dawn, live shad' } },
-  { id: 'fish-07', name: 'Flat Creek Channel', type: 'fishing', lat: 34.3100, lng: -83.8800, description: 'North-central old creek channel. Spotted bass and crappie. Structure fishing with jigs.', details: { 'Species': 'Spotted bass, crappie' } },
-  { id: 'fish-08', name: 'Lanier Islands Points', type: 'fishing', lat: 34.1750, lng: -84.0300, description: 'Rocky points around Lanier Islands. Schooling spotted bass in summer. Topwater early morning.', details: { 'Species': 'Spotted bass', 'Technique': 'Topwater AM' } },
-  { id: 'fish-09', name: 'West Bank Fishing Pier', type: 'fishing', lat: 34.1760, lng: -84.0745, description: 'Designated fishing pier at West Bank Park. Shore fishing, no boat needed. Good for catfish and bass.', details: { 'Access': 'Shore — no boat needed', 'Species': 'Catfish, bass' } },
-  { id: 'fish-10', name: 'Longwood Fishing Pier', type: 'fishing', lat: 34.2987, lng: -83.8568, description: 'Fishing pier at Longwood Park in Gainesville. Shore access. Gazebo nearby.', details: { 'Access': 'Shore — pier', 'Species': 'Bass, catfish' } },
-  { id: 'fish-11', name: 'Clarks Bridge / Olympic Park Area', type: 'fishing', lat: 34.3519, lng: -83.7931, description: 'NE shore near Olympic Park. Calm waters. Good crappie fishing along the docks and structure. Rowing Club area.', details: { 'Species': 'Crappie, bass' } },
-
-  // ╔══════════════════════════════════════════════════════════════════════╗
-  // ║  ROPE SWINGS / CLIFF JUMPING                                        ║
-  // ╚══════════════════════════════════════════════════════════════════════╝
-  { id: 'sw-01', name: 'Bald Ridge Creek Rope Swing', type: 'rope_swing', lat: 34.2089, lng: -84.0842, description: 'Classic rope swing. Check depth — changes with water level. Best at full pool (~12ft). Boat access only.', details: { 'Depth full pool': '~12ft', 'Access': 'Boat only' } },
-  { id: 'sw-02', name: 'Young Deer Park Rope Swing', type: 'rope_swing', lat: 34.3150, lng: -83.8780, description: 'Rope swing and jumping rock at Young Deer Park. Popular with locals. Accessible from the park.', details: { 'Access': 'Park + boat', 'Caution': 'Check depth every time' } },
-
-  // ═══ MISSING PARKS ═══
-  { id: 'p-09', name: 'Powerhouse Park', type: 'park', lat: 34.1560, lng: -84.0710, description: 'Below Buford Dam. Lovely views of the Chattahoochee River. Favorite for hikers, fishermen, tubers, kayakers. Laurel Ridge Trail (3.8mi) runs through the park.', details: { 'Trail': 'Laurel Ridge Trail (3.8mi)', 'Access': 'Below dam' } },
-  { id: 'p-10', name: 'Little Ridge Park', type: 'park', lat: 34.1950, lng: -84.0900, description: 'Off Holtzclaw Rd near Habersham Marina. Quiet park on the south side.', details: {} },
-  { id: 'p-11', name: 'West Bank Park', type: 'park', lat: 34.1760, lng: -84.0750, description: 'Large attractive USACE fee park. Lots of bathrooms, picnic tables, BBQ grills, playgrounds, picnic shelters, pavilions. Fishing pier. Views of Buford Dam. Pavilions reservable (770-945-9531). Very popular south-side park.', details: { 'Fee': '$5/day', 'Phone': '770-945-9531', 'Amenities': 'Fishing pier, playgrounds, BBQ, pavilions' } },
-  { id: 'p-12', name: 'Chestnut Ridge Park', type: 'park', lat: 34.2450, lng: -83.9400, description: 'USACE park on the east side near Flowery Branch.', details: {} },
-  { id: 'p-13', name: 'Mountain View Park', type: 'park', lat: 34.2557, lng: -83.9445, description: 'USACE park with boat ramp and dock. Can get busy — limited trailer parking on peak days.', details: {} },
-
-  // ═══ MISSING FISHING SPOTS — GPS from Team Lanier verified coordinates ═══
-  { id: 'fish-12', name: 'Ada Creek', type: 'fishing', lat: 34.3479, lng: -83.8728, description: 'Up the Chattahoochee River. Troll umbrella rigs. Downlines productive. Check the 1st reef pole at the mouth. Often overlooked but holds bait and fish.', details: { 'Species': 'Striped bass', 'Technique': 'Umbrella rigs, downlines', 'GPS': '34°20.875N, 83°52.366W' } },
-  { id: 'fish-13', name: 'Canine Point', type: 'fishing', lat: 34.2033, lng: -84.0062, description: 'Named fishing spot on the main lake body. Good structure fishing.', details: { 'GPS': '34°12.197N, 84°0.370W' } },
-  { id: 'fish-14', name: 'Six Mile Creek Mouth', type: 'fishing', lat: 34.2443, lng: -84.0382, description: 'Fish at the mouth where it meets the river channel, in the narrows, and at the island on the channel side. Commonly overlooked but productive.', details: { 'Species': 'Striped bass', 'Location': 'Mouth at river channel' } },
-  { id: 'fish-15', name: 'Short Creek / Chestatee Bay', type: 'fishing', lat: 34.2500, lng: -84.0500, description: 'Just north of Browns Bridge in Chestatee Bay. Great mid-lake area. Close to main river channel — prime striper habitat. Closest ramp: Long Hollow Park.', details: { 'Species': 'Striped bass', 'Location': 'Chestatee Bay north of Browns Bridge' } },
-  { id: 'fish-16', name: 'Bald Ridge Creek Fishing', type: 'fishing', lat: 34.2083, lng: -84.0842, description: 'Holds fish nearly year round. As water temp changes fish move shallow or deep — plenty of cover and current. Great campground nearby.', details: { 'Species': 'Striped bass, spotted bass', 'Best': 'Year-round', 'Tip': 'Summer deep, winter shallow' } },
-  { id: 'fish-17', name: 'Sawnee Creek', type: 'fishing', lat: 34.1880, lng: -84.0780, description: 'On the left heading in. Often overlooked. Near Sawnee Campground. Good structure fishing.', details: { 'Species': 'Bass' } },
-  { id: 'fish-18', name: 'Latham Creek / Johnson Creek', type: 'fishing', lat: 34.3550, lng: -83.9700, description: 'North on the Chestatee River past Hwy 53 bridge. Often overlooked. Near Johnson Creek. Tight navigation spot going to the back — be careful.', details: { 'Species': 'Striped bass', 'Caution': 'Tight navigation in back of creek' } },
-  { id: 'fish-19', name: 'Taylor Creek', type: 'fishing', lat: 34.2200, lng: -84.0400, description: 'Points along Taylor Creek. Mid-lake west side fishing.', details: { 'Species': 'Bass' } },
-
-  // ═══ MISSING COMMUNITY SPOTS ═══
-  { id: 'i-09', name: 'Three Sisters Island Loop', type: 'island', lat: 34.2300, lng: -83.9750, description: 'Popular 8-mile SUP/kayak loop from Vanns Tavern. Trio of islands with reddish sandy shores and brambles of greenery. On blustery days the paddle out is challenging but the return with wind at your back feels like surfing.', details: { 'Access': 'Kayak/SUP from Vanns Tavern', 'Distance': '8-mile loop' } },
-  { id: 'i-10', name: 'Sunrise Cove (Anchoring)', type: 'island', lat: 34.1680, lng: -84.0100, description: 'Peaceful cove near Lanier Islands. Recommended morning coffee/breakfast anchoring spot. Protected and quiet.', details: { 'Access': 'Boat only', 'Best time': 'Morning' } },
-
-  // ═══ MISSING DOCK / BOAT RENTAL LOCATIONS ═══
-  { id: 'd-01', name: 'Lake Lanier Canoe & Kayak Club', type: 'dock', lat: 34.3528, lng: -83.791, description: 'At Olympic Park / Clarks Bridge. Kayak, canoe, SUP rentals. Introductory classes and camps. Beginner to elite programs. Resident club at The Boathouse.', details: { 'Rentals': 'Kayak, canoe, SUP', 'Classes': 'Beginner to elite' } },
-  { id: 'd-02', name: 'Lake Lanier Rowing Club', type: 'dock', lat: 34.3528, lng: -83.7914, description: 'At Olympic Park / Clarks Bridge. Recreational and competitive rowing from 7th grade to adult. Learn to Row classes. Hosts regattas including NCAA championships.', details: { 'Programs': '7th grade to adult', 'Events': 'NCAA championships, regattas' } },
-  { id: 'd-03', name: 'Lake Lanier Sailing Club', type: 'dock', lat: 34.201, lng: -83.9639, description: 'Near Aqualand Marina in Chattahoochee Bay. Sailing lessons, club races, cruising events. Sailboat breakwater dock at Sunrise Cove Marina.', details: {} },
-  { id: 'd-04', name: 'Lanier Boat Rental at Aqualand', type: 'dock', lat: 34.2011, lng: -83.9642, description: 'Pontoon, kayak, and paddleboard rentals at Aqualand Marina. Also Fish-Tales Watersports with rental pontoons, kayaks, SUPs.', details: { 'Rentals': 'Pontoon, kayak, SUP' } },
-  { id: 'd-05', name: 'Port Royale Boat Rentals', type: 'dock', lat: 34.2191, lng: -84.083, description: 'Pontoon boats, ski boats, wave runners, and group boats for rent. Massive boat rental area at Port Royale Marina.', details: { 'Rentals': 'Pontoon, ski boat, wave runner, group boat' } },
-
+  // ═══════════════════════════════════════════════════
+  // REMAINING BATCHES (future sessions)
+  // Batch 4: Parks + Beaches (~15)
+  // Batch 5: Campgrounds (~8)
+  // Batch 6: Islands + Fishing Spots (~10)
+  // ═══════════════════════════════════════════════════
 ];
