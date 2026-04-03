@@ -1,255 +1,302 @@
 /**
- * Water Router — A* pathfinding on Lake Lanier's navigable water
- * 
- * Uses 8-zone lake boundary to classify water vs land.
- * Coarse grid (300m cells) for fast pathfinding with smoothed output.
- * Routes stay on water and go around peninsulas.
+ * NaviLake — A* Water Router
+ * Routes exclusively through water using the pre-computed navigation grid.
+ * Never routes through land.
  */
 
-import type { Hazard } from '@/data/hazards';
-import { isOnWater } from '@/data/lake-boundary';
+import navGridData from '@/data/nav-grid.json';
 
+// ─── Types ───
 export interface RouteResult {
-  path: [number, number][];
+  path: [number, number][]; // [lng, lat] pairs for MapLibre
   distance_nm: number;
-  hazards_nearby: number;
-  min_depth_ft: number;
   warnings: string[];
 }
 
-// Finer grid = more accurate routes (200m per cell, ~14K cells)
-const GRID_RES = 0.002;
-const HAZARD_BUFFER = 0.004;
+interface GridCell {
+  row: number;
+  col: number;
+}
 
-const BOUNDS = {
-  minLng: -84.125, maxLng: -83.760,
-  minLat: 34.145, maxLat: 34.405,
+// ─── Decode RLE grid on module load ───
+const { bounds, resolution, rows, cols, grid_rle } = navGridData as {
+  bounds: { south: number; north: number; west: number; east: number };
+  resolution: number;
+  rows: number;
+  cols: number;
+  shore_buffer_cells: number;
+  water_cells: number;
+  grid_rle: number[];
 };
 
-function haversineNM(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3440.065;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+// Decode RLE into flat Uint8Array: 0=land, 1=open water, 2=near-shore
+const grid = new Uint8Array(rows * cols);
+let idx = 0;
+for (let i = 0; i < grid_rle.length; i += 2) {
+  const val = grid_rle[i];
+  const count = grid_rle[i + 1];
+  for (let j = 0; j < count; j++) {
+    grid[idx++] = val;
+  }
 }
 
-// Cache the navigable grid (doesn't change between routes)
-let cachedGrid: { nav: Uint8Array; rows: number; cols: number } | null = null;
-
-function getGrid(hazards: Hazard[], waterLevel: number) {
-  const cols = Math.ceil((BOUNDS.maxLng - BOUNDS.minLng) / GRID_RES);
-  const rows = Math.ceil((BOUNDS.maxLat - BOUNDS.minLat) / GRID_RES);
-
-  if (cachedGrid && cachedGrid.rows === rows && cachedGrid.cols === cols) {
-    return cachedGrid;
-  }
-
-  const nav = new Uint8Array(rows * cols);
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const lng = BOUNDS.minLng + c * GRID_RES;
-      const lat = BOUNDS.minLat + r * GRID_RES;
-      // Check center + offsets for better coverage
-      if (isOnWater(lng, lat) || 
-          isOnWater(lng + GRID_RES * 0.3, lat) || 
-          isOnWater(lng - GRID_RES * 0.3, lat) ||
-          isOnWater(lng, lat + GRID_RES * 0.3) ||
-          isOnWater(lng, lat - GRID_RES * 0.3)) {
-        nav[r * cols + c] = 1;
-      }
-    }
-  }
-
-  cachedGrid = { nav, rows, cols };
-  return cachedGrid;
+// ─── Coordinate conversion ───
+function latLngToGrid(lat: number, lng: number): GridCell {
+  const row = Math.floor((lat - bounds.south) / resolution);
+  const col = Math.floor((lng - bounds.west) / resolution);
+  return {
+    row: Math.max(0, Math.min(rows - 1, row)),
+    col: Math.max(0, Math.min(cols - 1, col)),
+  };
 }
 
-// A* with proper binary heap
-function astar(nav: Uint8Array, rows: number, cols: number,
-  sr: number, sc: number, er: number, ec: number): number[] | null {
-
-  const size = rows * cols;
-  const g = new Float32Array(size).fill(Infinity);
-  const parent = new Int32Array(size).fill(-1);
-  const closed = new Uint8Array(size);
-
-  const idx = (r: number, c: number) => r * cols + c;
-  const startI = idx(sr, sc);
-  const endI = idx(er, ec);
-
-  if (!nav[startI] || !nav[endI]) return null;
-
-  g[startI] = 0;
-
-  // Binary heap priority queue
-  const heap: number[] = [startI];
-  const fScore = new Float32Array(size).fill(Infinity);
-  fScore[startI] = Math.sqrt((er - sr) ** 2 + (ec - sc) ** 2);
-
-  function heapPush(i: number) {
-    heap.push(i);
-    let pos = heap.length - 1;
-    while (pos > 0) {
-      const parentPos = (pos - 1) >> 1;
-      if (fScore[heap[pos]] < fScore[heap[parentPos]]) {
-        [heap[pos], heap[parentPos]] = [heap[parentPos], heap[pos]];
-        pos = parentPos;
-      } else break;
-    }
-  }
-
-  function heapPop(): number {
-    const top = heap[0];
-    const last = heap.pop()!;
-    if (heap.length > 0) {
-      heap[0] = last;
-      let pos = 0;
-      while (true) {
-        let smallest = pos;
-        const left = 2 * pos + 1, right = 2 * pos + 2;
-        if (left < heap.length && fScore[heap[left]] < fScore[heap[smallest]]) smallest = left;
-        if (right < heap.length && fScore[heap[right]] < fScore[heap[smallest]]) smallest = right;
-        if (smallest !== pos) {
-          [heap[pos], heap[smallest]] = [heap[smallest], heap[pos]];
-          pos = smallest;
-        } else break;
-      }
-    }
-    return top;
-  }
-
-  const dirs = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
-
-  let iterations = 0;
-  while (heap.length > 0 && iterations++ < 200000) {
-    const curI = heapPop();
-
-    if (curI === endI) {
-      // Reconstruct path
-      const path: number[] = [];
-      let node = endI;
-      while (node !== -1) { path.push(node); node = parent[node]; }
-      return path.reverse();
-    }
-
-    if (closed[curI]) continue;
-    closed[curI] = 1;
-
-    const cr = Math.floor(curI / cols);
-    const cc = curI % cols;
-
-    for (const [dr, dc] of dirs) {
-      const nr = cr + dr, nc = cc + dc;
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      const nI = idx(nr, nc);
-      if (closed[nI] || !nav[nI]) continue;
-
-      const moveCost = (dr !== 0 && dc !== 0) ? 1.414 : 1.0;
-      const newG = g[curI] + moveCost;
-
-      if (newG < g[nI]) {
-        g[nI] = newG;
-        parent[nI] = curI;
-        const h = Math.sqrt((er - nr) ** 2 + (ec - nc) ** 2);
-        fScore[nI] = newG + h;
-        heapPush(nI);
-      }
-    }
-  }
-
-  return null;
+function gridToLatLng(row: number, col: number): [number, number] {
+  const lat = bounds.south + (row + 0.5) * resolution;
+  const lng = bounds.west + (col + 0.5) * resolution;
+  return [lng, lat]; // [lng, lat] for MapLibre
 }
 
-// Douglas-Peucker smoothing
-function smooth(pts: [number, number][], eps: number): [number, number][] {
-  if (pts.length <= 2) return pts;
-  let maxD = 0, maxI = 0;
-  const [sx, sy] = pts[0], [ex, ey] = pts[pts.length - 1];
-  const len = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2);
-  for (let i = 1; i < pts.length - 1; i++) {
-    const [px, py] = pts[i];
-    const d = len === 0
-      ? Math.sqrt((px - sx) ** 2 + (py - sy) ** 2)
-      : Math.abs((ey - sy) * px - (ex - sx) * py + ex * sy - ey * sx) / len;
-    if (d > maxD) { maxD = d; maxI = i; }
-  }
-  if (maxD > eps) {
-    const left = smooth(pts.slice(0, maxI + 1), eps);
-    const right = smooth(pts.slice(maxI), eps);
-    return [...left.slice(0, -1), ...right];
-  }
-  return [pts[0], pts[pts.length - 1]];
+function isNavigable(row: number, col: number): boolean {
+  if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
+  return grid[row * cols + col] > 0; // 1 or 2 = water
 }
 
-function findNearest(nav: Uint8Array, rows: number, cols: number, r: number, c: number): [number, number] {
-  const clampR = Math.max(0, Math.min(r, rows - 1));
-  const clampC = Math.max(0, Math.min(c, cols - 1));
-  if (nav[clampR * cols + clampC]) return [clampR, clampC];
+function getCellCost(row: number, col: number): number {
+  const val = grid[row * cols + col];
+  if (val === 0) return Infinity; // land
+  if (val === 2) return 3;        // near-shore — penalize to keep routes in open water
+  return 1;                        // open water
+}
+
+// ─── Find nearest navigable cell (spiral search) ───
+function findNearestWater(row: number, col: number): GridCell | null {
+  if (isNavigable(row, col)) return { row, col };
+
   for (let radius = 1; radius < 50; radius++) {
     for (let dr = -radius; dr <= radius; dr++) {
       for (let dc = -radius; dc <= radius; dc++) {
-        if (Math.abs(dr) !== radius && Math.abs(dc) !== radius) continue;
-        const nr = clampR + dr, nc = clampC + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && nav[nr * cols + nc]) return [nr, nc];
+        if (Math.abs(dr) !== radius && Math.abs(dc) !== radius) continue; // only check perimeter
+        const nr = row + dr, nc = col + dc;
+        if (isNavigable(nr, nc)) return { row: nr, col: nc };
       }
     }
   }
-  return [clampR, clampC];
+  return null;
 }
 
+// ─── A* Pathfinding ───
+// 8-directional movement
+const DIRS: [number, number, number][] = [
+  [-1, 0, 1], [1, 0, 1], [0, -1, 1], [0, 1, 1],           // cardinal
+  [-1, -1, 1.414], [-1, 1, 1.414], [1, -1, 1.414], [1, 1, 1.414], // diagonal
+];
+
+function heuristic(r1: number, c1: number, r2: number, c2: number): number {
+  // Octile distance (consistent heuristic for 8-dir movement)
+  const dr = Math.abs(r1 - r2);
+  const dc = Math.abs(c1 - c2);
+  return Math.max(dr, dc) + 0.414 * Math.min(dr, dc);
+}
+
+function astar(start: GridCell, end: GridCell): GridCell[] | null {
+  const key = (r: number, c: number) => r * cols + c;
+
+  const gScore = new Map<number, number>();
+  const fScore = new Map<number, number>();
+  const cameFrom = new Map<number, number>();
+
+  const startKey = key(start.row, start.col);
+  const endKey = key(end.row, end.col);
+
+  gScore.set(startKey, 0);
+  fScore.set(startKey, heuristic(start.row, start.col, end.row, end.col));
+
+  // Simple binary heap priority queue
+  const openSet: { key: number; row: number; col: number; f: number }[] = [
+    { key: startKey, row: start.row, col: start.col, f: fScore.get(startKey)! },
+  ];
+  const inOpen = new Set<number>([startKey]);
+  const closed = new Set<number>();
+
+  let iterations = 0;
+  const MAX_ITERATIONS = 500000; // safety limit
+
+  while (openSet.length > 0 && iterations < MAX_ITERATIONS) {
+    iterations++;
+
+    // Find node with lowest f-score (simple linear scan — fast enough for ~60k water cells)
+    let bestIdx = 0;
+    for (let i = 1; i < openSet.length; i++) {
+      if (openSet[i].f < openSet[bestIdx].f) bestIdx = i;
+    }
+    const current = openSet[bestIdx];
+    openSet.splice(bestIdx, 1);
+    inOpen.delete(current.key);
+
+    if (current.key === endKey) {
+      // Reconstruct path
+      const path: GridCell[] = [];
+      let k = endKey;
+      while (k !== undefined) {
+        const r = Math.floor(k / cols);
+        const c = k % cols;
+        path.unshift({ row: r, col: c });
+        k = cameFrom.get(k)!;
+        if (k === startKey) {
+          path.unshift(start);
+          break;
+        }
+      }
+      return path;
+    }
+
+    closed.add(current.key);
+
+    for (const [dr, dc, baseDist] of DIRS) {
+      const nr = current.row + dr;
+      const nc = current.col + dc;
+
+      if (!isNavigable(nr, nc)) continue;
+
+      const nKey = key(nr, nc);
+      if (closed.has(nKey)) continue;
+
+      const moveCost = baseDist * getCellCost(nr, nc);
+      const tentG = (gScore.get(current.key) ?? Infinity) + moveCost;
+
+      if (tentG < (gScore.get(nKey) ?? Infinity)) {
+        cameFrom.set(nKey, current.key);
+        gScore.set(nKey, tentG);
+        const f = tentG + heuristic(nr, nc, end.row, end.col);
+        fScore.set(nKey, f);
+
+        if (!inOpen.has(nKey)) {
+          openSet.push({ key: nKey, row: nr, col: nc, f });
+          inOpen.add(nKey);
+        }
+      }
+    }
+  }
+
+  return null; // no path found
+}
+
+// ─── Path smoothing (line-of-sight) ───
+function hasLineOfSight(r1: number, c1: number, r2: number, c2: number): boolean {
+  // Bresenham-style line walk checking every cell is navigable
+  const dr = Math.abs(r2 - r1);
+  const dc = Math.abs(c2 - c1);
+  const sr = r1 < r2 ? 1 : -1;
+  const sc = c1 < c2 ? 1 : -1;
+  let err = dr - dc;
+  let r = r1, c = c1;
+
+  while (true) {
+    if (!isNavigable(r, c)) return false;
+    if (r === r2 && c === c2) break;
+    const e2 = 2 * err;
+    if (e2 > -dc) { err -= dc; r += sr; }
+    if (e2 < dr) { err += dr; c += sc; }
+  }
+  return true;
+}
+
+function smoothPath(path: GridCell[]): GridCell[] {
+  if (path.length <= 2) return path;
+
+  const smoothed: GridCell[] = [path[0]];
+  let current = 0;
+
+  while (current < path.length - 1) {
+    // Try to skip ahead as far as possible with line-of-sight
+    let farthest = current + 1;
+    for (let i = path.length - 1; i > current + 1; i--) {
+      if (hasLineOfSight(path[current].row, path[current].col, path[i].row, path[i].col)) {
+        farthest = i;
+        break;
+      }
+    }
+    smoothed.push(path[farthest]);
+    current = farthest;
+  }
+
+  return smoothed;
+}
+
+// ─── Haversine distance ───
+function haversineNM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3440.065; // Earth radius in nautical miles
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ─── Main routing function ───
 export function findWaterRoute(
-  startLng: number, startLat: number,
-  endLng: number, endLat: number,
-  hazards: Hazard[], currentWaterLevel: number
+  startLng: number,
+  startLat: number,
+  endLng: number,
+  endLat: number,
+  hazards?: any[],
+  currentLevel?: number,
 ): RouteResult {
   const warnings: string[] = [];
-  const { nav, rows, cols } = getGrid(hazards, currentWaterLevel);
 
-  const toGrid = (lng: number, lat: number): [number, number] => [
-    Math.round((lat - BOUNDS.minLat) / GRID_RES),
-    Math.round((lng - BOUNDS.minLng) / GRID_RES),
-  ];
+  // Convert to grid coordinates
+  const startGrid = latLngToGrid(startLat, startLng);
+  const endGrid = latLngToGrid(endLat, endLng);
 
-  let [sr, sc] = findNearest(nav, rows, cols, ...toGrid(startLng, startLat));
-  let [er, ec] = findNearest(nav, rows, cols, ...toGrid(endLng, endLat));
+  // Snap to nearest navigable cell if starting/ending on land
+  const startWater = findNearestWater(startGrid.row, startGrid.col);
+  const endWater = findNearestWater(endGrid.row, endGrid.col);
 
-  const pathIndices = astar(nav, rows, cols, sr, sc, er, ec);
+  if (!startWater) {
+    warnings.push('Start location is too far from water');
+    return { path: [[startLng, startLat], [endLng, endLat]], distance_nm: 0, warnings };
+  }
+  if (!endWater) {
+    warnings.push('Destination is too far from water');
+    return { path: [[startLng, startLat], [endLng, endLat]], distance_nm: 0, warnings };
+  }
 
-  if (!pathIndices) {
-    warnings.push('No water route found — showing direct course');
+  if (startWater.row !== startGrid.row || startWater.col !== startGrid.col) {
+    warnings.push('Snapped start to nearest water');
+  }
+  if (endWater.row !== endGrid.row || endWater.col !== endGrid.col) {
+    warnings.push('Snapped destination to nearest water');
+  }
+
+  // Run A*
+  const rawPath = astar(startWater, endWater);
+
+  if (!rawPath) {
+    warnings.push('No water route found — areas may not be connected');
+    // Fallback: direct line
     return {
       path: [[startLng, startLat], [endLng, endLat]],
       distance_nm: haversineNM(startLat, startLng, endLat, endLng),
-      hazards_nearby: 0, min_depth_ft: 0, warnings,
+      warnings,
     };
   }
 
-  const rawPath: [number, number][] = pathIndices.map(i => [
-    BOUNDS.minLng + (i % cols) * GRID_RES,
-    BOUNDS.minLat + Math.floor(i / cols) * GRID_RES,
-  ]);
+  // Smooth the path
+  const smoothed = smoothPath(rawPath);
 
-  const smoothed = smooth(rawPath, GRID_RES * 0.5);
-  smoothed[0] = [startLng, startLat];
-  smoothed[smoothed.length - 1] = [endLng, endLat];
+  // Convert to [lng, lat] coordinates
+  const path: [number, number][] = [
+    [startLng, startLat], // actual start position
+    ...smoothed.map(c => gridToLatLng(c.row, c.col)),
+    [endLng, endLat], // actual end position
+  ];
 
-  let totalDist = 0;
-  for (let i = 1; i < smoothed.length; i++) {
-    totalDist += haversineNM(smoothed[i - 1][1], smoothed[i - 1][0], smoothed[i][1], smoothed[i][0]);
+  // Calculate total distance
+  let totalNM = 0;
+  for (let i = 1; i < path.length; i++) {
+    totalNM += haversineNM(path[i - 1][1], path[i - 1][0], path[i][1], path[i][0]);
   }
 
-  let hazardsNear = 0;
-  for (const h of hazards) {
-    if (currentWaterLevel - h.elevation_ft < 6) {
-      for (const [lng, lat] of smoothed) {
-        if (Math.sqrt((lng - h.lng) ** 2 + (lat - h.lat) ** 2) < HAZARD_BUFFER) { hazardsNear++; break; }
-      }
-    }
-  }
-  if (hazardsNear > 0) warnings.push(`${hazardsNear} hazard${hazardsNear > 1 ? 's' : ''} near route`);
-
-  return { path: smoothed, distance_nm: totalDist, hazards_nearby: hazardsNear, min_depth_ft: 0, warnings };
+  return { path, distance_nm: totalNM, warnings };
 }
